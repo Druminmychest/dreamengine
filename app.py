@@ -150,7 +150,7 @@ def admin_phrases():
         ORDER BY submission_timestamp
     """)
     phrases = cursor.fetchall()
-    cursor.execute("SELECT hexagram_id, number, name_english FROM hexagrams ORDER BY number")
+    cursor.execute("SELECT hexagram_id, number, name_english, judgment_text FROM hexagrams ORDER BY number")
     hexagrams = cursor.fetchall()
     cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
     remaining = cursor.fetchone()['total']
@@ -176,7 +176,7 @@ def admin_phrases():
                     <option value="">-- Assign hexagram --</option>
                     {% for h in hexagrams %}
                     <option value="{{ h.hexagram_id }}">
-                        {{ h.number }} — {{ h.name_english }}
+                        {{ h.number }} — {{ h.name_english }}: {{ h['judgment_text'][:50] }}...
                     </option>
                     {% endfor %}
                 </select>
@@ -204,7 +204,7 @@ def admin_mobile():
         LIMIT 1
     """)
     phrase = cursor.fetchone()
-    cursor.execute("SELECT hexagram_id, number, name_english FROM hexagrams ORDER BY number")
+    cursor.execute("SELECT hexagram_id, number, name_english, judgment_text FROM hexagrams ORDER BY number")
     hexagrams = cursor.fetchall()
     cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
     remaining = cursor.fetchone()['total']

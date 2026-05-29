@@ -190,6 +190,8 @@
                 <h3>Hexagram {{ result.hexagram.number }} &mdash; {{ result.hexagram.name_english }}</h3>
                 <p><span class="label">Chinese</span><br>{{ result.hexagram.name_chinese }} &nbsp; {{ result.hexagram.name_english }}</p>
                 <p><span class="label">Pattern</span><br>{{ result.hexagram.binary_pattern }}</p>
+                <p><span class="label">Judgment</span><br>{{ result.hexagram.judgment_text }}</p>
+                <p><span class="label">Image</span><br>{{ result.hexagram.image_text }}</p>
                 {% if result.changing_lines %}
                     <p><span class="label">Changing lines</span><br>{{ result.changing_lines | join(', ') }}</p>
                 {% else %}
