@@ -1,14 +1,16 @@
 from flask import Flask, request, jsonify, render_template_string, redirect, url_for
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import random
 import uuid
+import os
 
 app = Flask(__name__)
-DB_PATH = 'dreamengine.db'
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.cursor_factory = psycopg2.extras.RealDictCursor
     return conn
 
 def toss_three_coins():
@@ -39,7 +41,7 @@ def transform_to_secondary(lines):
 
 def lookup_hexagram(cursor, pattern):
     cursor.execute(
-        "SELECT * FROM hexagrams WHERE binary_pattern = ?",
+        "SELECT * FROM hexagrams WHERE binary_pattern = %s",
         (pattern,)
     )
     return cursor.fetchone()
@@ -49,20 +51,20 @@ def generate_poem(hexagram_id, num_lines=5):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT raw_text FROM phrases
-        WHERE status = 'approved' AND hexagram_id = ?
+        WHERE status = 'approved' AND hexagram_id = %s
         ORDER BY RANDOM()
-        LIMIT ?
+        LIMIT %s
     """, (hexagram_id, num_lines))
     phrases = cursor.fetchall()
     conn.close()
     if not phrases:
         return None
-    return '\n'.join([p[0] for p in phrases])
+    return '\n'.join([p['raw_text'] for p in phrases])
 
 @app.route('/')
 def index():
     return render_template_string('''
-        <h1>Dream Engine</h1>
+        <h1>Rocky's Dream Engine</h1>
         <form method="POST" action="/submit">
             <textarea name="phrase" rows="4" cols="50"
                 placeholder="Enter your phrase, image, or fragment..."></textarea>
@@ -91,14 +93,17 @@ def submit():
 
     cursor.execute("""
         INSERT INTO phrases (raw_text, contributor_token, status)
-        VALUES (?, ?, 'pending')
+        VALUES (%s, %s, 'pending')
     """, (phrase, session_id))
-    phrase_id = cursor.lastrowid
+
+    cursor.execute("SELECT phrase_id FROM phrases WHERE contributor_token = %s ORDER BY submission_timestamp DESC LIMIT 1", (session_id,))
+    phrase_row = cursor.fetchone()
+    phrase_id = phrase_row['phrase_id'] if phrase_row else None
 
     cursor.execute("""
         INSERT INTO sessions
             (session_id, submission_phrase_id, hexagram_result)
-        VALUES (?, ?, ?)
+        VALUES (%s, %s, %s)
     """, (session_id, phrase_id, primary['hexagram_id'] if primary else None))
 
     conn.commit()
@@ -114,7 +119,7 @@ def submit():
     }
 
     return render_template_string('''
-        <h1>Dream Engine</h1>
+        <h1>Rocky's Dream Engine</h1>
         <h2>Hexagram {{ result.hexagram.number }} — {{ result.hexagram.name_english }}</h2>
         <p><strong>Chinese:</strong> {{ result.hexagram.name_chinese }}</p>
         {% if result.changing_lines %}
@@ -143,8 +148,8 @@ def admin_phrases():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT * FROM phrases 
-        WHERE status = 'pending' 
+        SELECT * FROM phrases
+        WHERE status = 'pending'
         ORDER BY submission_timestamp
     """)
     phrases = cursor.fetchall()
@@ -157,11 +162,11 @@ def admin_phrases():
         <h1>Curation Queue</h1>
         <p><strong>{{ remaining }} phrases pending</strong></p>
         {% for p in phrases %}
-        <form method="POST" action="/admin/curate" 
+        <form method="POST" action="/admin/curate"
             style="border:1px solid #ccc; margin:10px 0; padding:12px;">
             <input type="hidden" name="phrase_id" value="{{ p.phrase_id }}">
             <div style="margin-bottom:10px;">
-                <textarea name="edited_text" rows="2" cols="60" 
+                <textarea name="edited_text" rows="2" cols="60"
                     style="font-size:14px;">{{ p.raw_text }}</textarea>
             </div>
             <div style="margin-bottom:10px;">
@@ -198,11 +203,11 @@ def curate():
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE phrases
-        SET status = ?,
-            hexagram_id = ?,
-            raw_text = ?,
+        SET status = %s,
+            hexagram_id = %s,
+            raw_text = %s,
             curation_timestamp = CURRENT_TIMESTAMP
-        WHERE phrase_id = ?
+        WHERE phrase_id = %s
     """, (
         status,
         hexagram_id if status == 'approved' and hexagram_id else None,
