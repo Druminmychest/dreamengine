@@ -139,6 +139,28 @@ def submit():
 def about():
     return render_template('about.html')
 
+@app.route('/admin/mobile')
+@require_auth
+def admin_mobile():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM phrases
+        WHERE status = 'pending'
+        ORDER BY submission_timestamp
+        LIMIT 1
+    """)
+    phrase = cursor.fetchone()
+    cursor.execute("SELECT hexagram_id, number, name_english FROM hexagrams ORDER BY number")
+    hexagrams = cursor.fetchall()
+    cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
+    remaining = cursor.fetchone()['total']
+    conn.close()
+    return render_template('admin_mobile.html',
+        phrase=phrase,
+        hexagrams=hexagrams,
+        remaining=remaining
+    )
 @app.route('/admin/phrases')
 @require_auth
 def admin_phrases():
@@ -215,7 +237,8 @@ def curate():
     conn.commit()
     conn.close()
 
-    return redirect(url_for('admin_phrases'))
+redirect_to = request.form.get('redirect_to', '/admin/phrases')
+    return redirect(redirect_to)
 
 if __name__ == '__main__':
     app.run(debug=True)
