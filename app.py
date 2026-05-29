@@ -157,6 +157,10 @@ def admin_phrases():
     conn.close()
     return render_template_string('''
         <h1>Curation Queue</h1>
+        <h1>Curation Queue</h1>
+        {% if request.args.get('error') %}
+        <p style="color:red; font-weight:bold;">Please assign a hexagram before approving.</p>
+        {% endif %}   
         <p><strong>{{ remaining }} phrases pending</strong></p>
         {% for p in phrases %}
         <form method="POST" action="/admin/curate"
@@ -218,6 +222,11 @@ def curate():
     hexagram_id = request.form.get('hexagram_id')
     edited_text = request.form.get('edited_text', '').strip()
     action = request.form.get('action')
+
+    # Guard: block approval without a hexagram
+    if action == 'approve' and not hexagram_id:
+        return redirect(url_for('admin_phrases') + '?error=1')
+
     redirect_to = request.form.get('redirect_to', '/admin/phrases')
 
     status = 'approved' if action == 'approve' else 'rejected'
