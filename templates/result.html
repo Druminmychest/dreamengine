@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocky's Dream Engine</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0A0A0A;
+            color: #F5F2EC;
+            font-family: Georgia, serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 1.4rem;
+            color: #C9A84C;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 3rem;
+            opacity: 0.8;
+        }
+
+        .gift-label {
+            font-size: 0.85rem;
+            color: #555;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+        }
+
+        .poem {
+            font-size: 1.2rem;
+            line-height: 2;
+            font-style: italic;
+            color: #F5F2EC;
+            white-space: pre-line;
+            margin-bottom: 3rem;
+            padding: 0 1rem;
+        }
+
+        .silence {
+            font-size: 1rem;
+            color: #444;
+            font-style: italic;
+            margin-bottom: 3rem;
+        }
+
+        .divider {
+            width: 40px;
+            height: 1px;
+            background: #C9A84C;
+            margin: 0 auto 2rem;
+            opacity: 0.4;
+        }
+
+        .again-btn {
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            color: #555;
+            font-family: Georgia, serif;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            padding: 0.8rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+        }
+
+        .again-btn:hover {
+            border-color: #C9A84C;
+            color: #C9A84C;
+        }
+
+        /* Reveal toggle */
+        .reveal-btn {
+            display: block;
+            background: none;
+            border: none;
+            color: #C9A84C;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 1.2rem;
+            border-radius: 2px;
+            font-family: Georgia, serif;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            margin: 1rem auto 0;
+            transition: color 0.3s;
+        }
+
+        .reveal-btn:hover {
+            color: #C9A84C;
+        }
+
+        .iching-details {
+            display: none;
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            text-align: left;
+        }
+
+        .iching-details.visible {
+            display: block;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .iching-details h3 {
+            font-size: 1rem;
+            color: #C9A84C;
+            margin-bottom: 1rem;
+            font-weight: normal;
+            letter-spacing: 0.05em;
+        }
+
+        .iching-details p {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.8;
+            font-family: Calibri, sans-serif;
+            margin-bottom: 0.5rem;
+        }
+
+        .iching-details .label {
+            color: #444;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .footer {
+            margin-top: 3rem;
+            font-size: 0.75rem;
+            color: #222;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Rocky's Dream Engine</div>
+
+        <div class="gift-label">Rocky offers you this</div>
+
+        {% if result.poem %}
+            <div class="poem">{{ result.poem }}</div>
+        {% else %}
+            <div class="silence">
+                The pool is quiet for this moment.<br>
+                Your words have entered it.
+            </div>
+        {% endif %}
+
+        <div class="divider"></div>
+
+        <a href="/" class="again-btn">Return</a>
+
+        <button class="reveal-btn" onclick="toggleDetails()">
+            &#x25BE; consult the hexagram
+        </button>
+
+        <div class="iching-details" id="iching-details">
+            {% if result.hexagram %}
+                <h3>Hexagram {{ result.hexagram.number }} &mdash; {{ result.hexagram.name_english }}</h3>
+                <p><span class="label">Chinese</span><br>{{ result.hexagram.name_chinese }} &nbsp; {{ result.hexagram.name_english }}</p>
+                <p><span class="label">Pattern</span><br>{{ result.hexagram.binary_pattern }}</p>
+                {% if result.changing_lines %}
+                    <p><span class="label">Changing lines</span><br>{{ result.changing_lines | join(', ') }}</p>
+                {% else %}
+                    <p><span class="label">Reading</span><br>No changing lines — this moment is settled.</p>
+                {% endif %}
+                {% if result.secondary_hexagram %}
+                    <p><span class="label">Becomes</span><br>
+                    Hexagram {{ result.secondary_hexagram.number }} &mdash; {{ result.secondary_hexagram.name_english }}</p>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            Your offering is anonymous. It enters the pool for others.
+        </div>
+    </div>
+
+    <script>
+        function toggleDetails() {
+            var details = document.getElementById('iching-details');
+            var btn = document.querySelector('.reveal-btn');
+            details.classList.toggle('visible');
+            btn.textContent = details.classList.contains('visible')
+                ? '▴ hide hexagram'
+                : '▾ consult the hexagram';
+        }
+    </script>
+</body>
+</html>

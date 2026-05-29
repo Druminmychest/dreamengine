@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string, redirect, url_for, Response
+from flask import Flask, request, jsonify, render_template, render_template_string, redirect, url_for, Response
 import psycopg2
 import psycopg2.extras
 import random
@@ -82,21 +82,13 @@ def generate_poem(hexagram_id, num_lines=5):
 
 @app.route('/')
 def index():
-    return render_template_string('''
-        <h1>Rocky's Dream Engine</h1>
-        <form method="POST" action="/submit">
-            <textarea name="phrase" rows="4" cols="50"
-                placeholder="Enter your phrase, image, or fragment..."></textarea>
-            <br><br>
-            <button type="submit">Consult the Oracle</button>
-        </form>
-    ''')
+    return render_template('index.html')
 
 @app.route('/submit', methods=['POST'])
 def submit():
     phrase = request.form.get('phrase', '').strip()
     if not phrase:
-        return jsonify({'error': 'No phrase provided'}), 400
+        return redirect(url_for('index'))
 
     session_id = str(uuid.uuid4())
     lines = generate_lines()
@@ -116,8 +108,8 @@ def submit():
     """, (phrase, session_id))
 
     cursor.execute("""
-        SELECT phrase_id FROM phrases 
-        WHERE contributor_token = %s 
+        SELECT phrase_id FROM phrases
+        WHERE contributor_token = %s
         ORDER BY submission_timestamp DESC LIMIT 1
     """, (session_id,))
     phrase_row = cursor.fetchone()
@@ -141,30 +133,7 @@ def submit():
         'poem': poem
     }
 
-    return render_template_string('''
-        <h1>Rocky's Dream Engine</h1>
-        <h2>Hexagram {{ result.hexagram.number }} — {{ result.hexagram.name_english }}</h2>
-        <p><strong>Chinese:</strong> {{ result.hexagram.name_chinese }}</p>
-        {% if result.changing_lines %}
-            <p><strong>Changing lines:</strong> {{ result.changing_lines }}</p>
-            {% if result.secondary_hexagram %}
-                <p><strong>Becomes:</strong> Hexagram {{ result.secondary_hexagram.number }}
-                — {{ result.secondary_hexagram.name_english }}</p>
-            {% endif %}
-        {% else %}
-            <p><strong>No changing lines</strong> — reading is locked</p>
-        {% endif %}
-        {% if result.poem %}
-            <hr>
-            <h3>From the dream pool:</h3>
-            <p style="font-style:italic; white-space:pre-line;">{{ result.poem }}</p>
-        {% else %}
-            <hr>
-            <p><em>The dream pool is silent for this hexagram.</em></p>
-        {% endif %}
-        <br>
-        <a href="/">Consult again</a>
-    ''', result=result)
+    return render_template('result.html', result=result)
 
 @app.route('/admin/phrases')
 @require_auth

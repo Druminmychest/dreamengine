@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocky's Dream Engine</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0A0A0A;
+            color: #F5F2EC;
+            font-family: Georgia, serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 1.4rem;
+            color: #C9A84C;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 3rem;
+            opacity: 0.8;
+        }
+
+        .prompt {
+            font-size: 1.8rem;
+            line-height: 1.5;
+            margin-bottom: 2.5rem;
+            font-style: italic;
+            color: #F5F2EC;
+        }
+
+        .prompt span {
+            color: #C9A84C;
+        }
+
+        textarea {
+            width: 100%;
+            background: #111111;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            color: #F5F2EC;
+            font-family: Georgia, serif;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            padding: 1.2rem;
+            resize: none;
+            min-height: 140px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            border-color: #C9A84C;
+        }
+
+        textarea::placeholder {
+            color: #444;
+            font-style: italic;
+        }
+
+        .submit-btn {
+            margin-top: 1.5rem;
+            background: transparent;
+            border: 1px solid #C9A84C;
+            color: #C9A84C;
+            font-family: Georgia, serif;
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            padding: 0.9rem 2.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            max-width: 240px;
+        }
+
+        .submit-btn:hover {
+            background: #C9A84C;
+            color: #0A0A0A;
+        }
+
+        /* Listening animation */
+        .listening {
+            display: none;
+            margin-top: 2rem;
+            color: #C9A84C;
+            font-style: italic;
+            font-size: 1rem;
+            opacity: 0;
+            animation: fadeIn 0.8s ease forwards;
+        }
+
+        .listening.active {
+            display: block;
+        }
+
+        .dots::after {
+            content: '';
+            animation: dots 1.8s steps(3, end) infinite;
+        }
+
+        @keyframes dots {
+            0%   { content: '.'; }
+            33%  { content: '..'; }
+            66%  { content: '...'; }
+            100% { content: ''; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .footer {
+            margin-top: 4rem;
+            font-size: 0.75rem;
+            color: #333;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Rocky's Dream Engine</div>
+
+        <div class="prompt">
+            Whisper something true.<br>
+            <span>I will always listen.</span>
+        </div>
+
+        <form method="POST" action="/submit" id="oracle-form">
+            <textarea
+                name="phrase"
+                placeholder="A line. A fragment. An image. A secret."
+                id="phrase-input"
+            ></textarea>
+            <br>
+            <button type="submit" class="submit-btn" id="submit-btn">
+                Offer it
+            </button>
+        </form>
+
+        <div class="listening" id="listening-msg">
+            Rocky is listening<span class="dots"></span>
+        </div>
+
+        <div class="footer">
+            Anonymous always. &nbsp;·&nbsp; Your words enter the pool.
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('oracle-form').addEventListener('submit', function(e) {
+            var phrase = document.getElementById('phrase-input').value.trim();
+            if (!phrase) {
+                e.preventDefault();
+                return;
+            }
+            document.getElementById('submit-btn').style.display = 'none';
+            document.getElementById('listening-msg').classList.add('active');
+        });
+    </script>
+</body>
+</html>
