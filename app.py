@@ -84,6 +84,10 @@ def generate_poem(hexagram_id, num_lines=5):
 def index():
     return render_template('index.html')
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
 @app.route('/submit', methods=['POST'])
 def submit():
     phrase = request.form.get('phrase', '').strip()
@@ -135,32 +139,6 @@ def submit():
 
     return render_template('result.html', result=result)
 
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
-@app.route('/admin/mobile')
-@require_auth
-def admin_mobile():
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT * FROM phrases
-        WHERE status = 'pending'
-        ORDER BY submission_timestamp
-        LIMIT 1
-    """)
-    phrase = cursor.fetchone()
-    cursor.execute("SELECT hexagram_id, number, name_english FROM hexagrams ORDER BY number")
-    hexagrams = cursor.fetchall()
-    cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
-    remaining = cursor.fetchone()['total']
-    conn.close()
-    return render_template('admin_mobile.html',
-        phrase=phrase,
-        hexagrams=hexagrams,
-        remaining=remaining
-    )
 @app.route('/admin/phrases')
 @require_auth
 def admin_phrases():
@@ -184,6 +162,7 @@ def admin_phrases():
         <form method="POST" action="/admin/curate"
             style="border:1px solid #ccc; margin:10px 0; padding:12px;">
             <input type="hidden" name="phrase_id" value="{{ p.phrase_id }}">
+            <input type="hidden" name="redirect_to" value="/admin/phrases">
             <div style="margin-bottom:10px;">
                 <textarea name="edited_text" rows="2" cols="60"
                     style="font-size:14px;">{{ p.raw_text }}</textarea>
@@ -209,6 +188,29 @@ def admin_phrases():
         {% endif %}
     ''', phrases=phrases, hexagrams=hexagrams, remaining=remaining)
 
+@app.route('/admin/mobile')
+@require_auth
+def admin_mobile():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM phrases
+        WHERE status = 'pending'
+        ORDER BY submission_timestamp
+        LIMIT 1
+    """)
+    phrase = cursor.fetchone()
+    cursor.execute("SELECT hexagram_id, number, name_english FROM hexagrams ORDER BY number")
+    hexagrams = cursor.fetchall()
+    cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
+    remaining = cursor.fetchone()['total']
+    conn.close()
+    return render_template('admin_mobile.html',
+        phrase=phrase,
+        hexagrams=hexagrams,
+        remaining=remaining
+    )
+
 @app.route('/admin/curate', methods=['POST'])
 @require_auth
 def curate():
@@ -216,6 +218,7 @@ def curate():
     hexagram_id = request.form.get('hexagram_id')
     edited_text = request.form.get('edited_text', '').strip()
     action = request.form.get('action')
+    redirect_to = request.form.get('redirect_to', '/admin/phrases')
 
     status = 'approved' if action == 'approve' else 'rejected'
 
@@ -237,7 +240,6 @@ def curate():
     conn.commit()
     conn.close()
 
-redirect_to = request.form.get('redirect_to', '/admin/phrases')
     return redirect(redirect_to)
 
 if __name__ == '__main__':
