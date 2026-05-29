@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify, render_template_string, redirect, url_for
+from functools import wraps
+from flask import Response
 import psycopg2
 import psycopg2.extras
 import random
@@ -60,7 +62,32 @@ def generate_poem(hexagram_id, num_lines=5):
     if not phrases:
         return None
     return '\n'.join([p['raw_text'] for p in phrases])
+def check_auth(username, password):
+    admin_user = os.environ.get('ADMIN_USERNAME', 'admin')
+    admin_pass = os.environ.get('ADMIN_PASSWORD', 'changeme')
+    return username == admin_user and password == admin_pass
 
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return Response(
+                'Authentication required.',
+                401,
+                {'WWW-Authenticate': 'Basic realm="Admin"'}
+            )
+        return f(*args, **kwargs)
+    return decorated
+@app.route('/admin/phrases')
+@require_auth
+def admin_phrases():
+    ...
+
+@app.route('/admin/curate', methods=['POST'])
+@require_auth
+def curate():
+    ...
 @app.route('/')
 def index():
     return render_template_string('''
