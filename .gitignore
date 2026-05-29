@@ -1,0 +1,4 @@
+dreamengine.db
+seed_phrases.txt
+__pycache__/
+*.pyc
