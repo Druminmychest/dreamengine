@@ -1,11 +1,10 @@
-from flask import Flask, request, jsonify, render_template_string, redirect, url_for
-from functools import wraps
-from flask import Response
+from flask import Flask, request, jsonify, render_template_string, redirect, url_for, Response
 import psycopg2
 import psycopg2.extras
 import random
 import uuid
 import os
+from functools import wraps
 
 app = Flask(__name__)
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -14,6 +13,24 @@ def get_db():
     conn = psycopg2.connect(DATABASE_URL)
     conn.cursor_factory = psycopg2.extras.RealDictCursor
     return conn
+
+def check_auth(username, password):
+    admin_user = os.environ.get('ADMIN_USERNAME', 'admin')
+    admin_pass = os.environ.get('ADMIN_PASSWORD', 'changeme')
+    return username == admin_user and password == admin_pass
+
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return Response(
+                'Authentication required.',
+                401,
+                {'WWW-Authenticate': 'Basic realm="Admin"'}
+            )
+        return f(*args, **kwargs)
+    return decorated
 
 def toss_three_coins():
     coins = [random.choice([2, 3]) for _ in range(3)]
@@ -62,32 +79,7 @@ def generate_poem(hexagram_id, num_lines=5):
     if not phrases:
         return None
     return '\n'.join([p['raw_text'] for p in phrases])
-def check_auth(username, password):
-    admin_user = os.environ.get('ADMIN_USERNAME', 'admin')
-    admin_pass = os.environ.get('ADMIN_PASSWORD', 'changeme')
-    return username == admin_user and password == admin_pass
 
-def require_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return Response(
-                'Authentication required.',
-                401,
-                {'WWW-Authenticate': 'Basic realm="Admin"'}
-            )
-        return f(*args, **kwargs)
-    return decorated
-@app.route('/admin/phrases')
-@require_auth
-def admin_phrases():
-    ...
-
-@app.route('/admin/curate', methods=['POST'])
-@require_auth
-def curate():
-    ...
 @app.route('/')
 def index():
     return render_template_string('''
@@ -123,7 +115,11 @@ def submit():
         VALUES (%s, %s, 'pending')
     """, (phrase, session_id))
 
-    cursor.execute("SELECT phrase_id FROM phrases WHERE contributor_token = %s ORDER BY submission_timestamp DESC LIMIT 1", (session_id,))
+    cursor.execute("""
+        SELECT phrase_id FROM phrases 
+        WHERE contributor_token = %s 
+        ORDER BY submission_timestamp DESC LIMIT 1
+    """, (session_id,))
     phrase_row = cursor.fetchone()
     phrase_id = phrase_row['phrase_id'] if phrase_row else None
 
@@ -171,6 +167,7 @@ def submit():
     ''', result=result)
 
 @app.route('/admin/phrases')
+@require_auth
 def admin_phrases():
     conn = get_db()
     cursor = conn.cursor()
@@ -218,6 +215,7 @@ def admin_phrases():
     ''', phrases=phrases, hexagrams=hexagrams, remaining=remaining)
 
 @app.route('/admin/curate', methods=['POST'])
+@require_auth
 def curate():
     phrase_id = request.form.get('phrase_id')
     hexagram_id = request.form.get('hexagram_id')
