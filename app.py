@@ -135,6 +135,10 @@ def submit():
 
     return render_template('result.html', result=result)
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
 @app.route('/admin/phrases')
 @require_auth
 def admin_phrases():
