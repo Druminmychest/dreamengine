@@ -150,8 +150,15 @@ def admin_phrases():
         ORDER BY submission_timestamp
     """)
     phrases = cursor.fetchall()
-    cursor.execute("SELECT hexagram_id, number, name_english, judgment_text FROM hexagrams ORDER BY number")
-    hexagrams = cursor.fetchall()
+    cursor.execute("""
+        SELECT h.hexagram_id, h.number, h.name_english, h.judgment_text,
+               COUNT(p.phrase_id) as phrase_count
+        FROM hexagrams h
+        LEFT JOIN phrases p ON h.hexagram_id = p.hexagram_id AND p.status = 'approved'
+        GROUP BY h.hexagram_id, h.number, h.name_english, h.judgment_text
+        ORDER BY h.number
+    """)
+    hexagrams = cursor.fetchall()   
     cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
     remaining = cursor.fetchone()['total']
     conn.close()
@@ -161,7 +168,21 @@ def admin_phrases():
         {% if request.args.get('error') %}
         <p style="color:red; font-weight:bold;">Please assign a hexagram before approving.</p>
         {% endif %}   
-        <p><strong>{{ remaining }} phrases pending</strong></p>
+<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
+    <tr>
+        <th style="text-align:left; padding:4px 8px; border-bottom:1px solid #ccc;">№</th>
+        <th style="text-align:left; padding:4px 8px; border-bottom:1px solid #ccc;">Name</th>
+        <th style="text-align:right; padding:4px 8px; border-bottom:1px solid #ccc;">Phrases</th>
+    </tr>
+    {% for h in hexagrams %}
+    <tr style="background: {% if h['phrase_count'] < 3 %}#fff3cd{% elif h['phrase_count'] < 6 %}#fff{% else %}#f0fff0{% endif %}">
+        <td style="padding:3px 8px;">{{ h['number'] }}</td>
+        <td style="padding:3px 8px;">{{ h['name_english'] }}</td>
+        <td style="padding:3px 8px; text-align:right;">{{ h['phrase_count'] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+<a name="queue"></a>
         {% for p in phrases %}
         <form method="POST" action="/admin/curate"
             style="border:1px solid #ccc; margin:10px 0; padding:12px;">
@@ -249,7 +270,7 @@ def curate():
     conn.commit()
     conn.close()
 
-    return redirect(redirect_to)
+    return redirect(redirect_to + '#queue')
 
 if __name__ == '__main__':
     app.run(debug=True)
