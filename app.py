@@ -151,20 +151,29 @@ def admin_phrases():
     """)
     phrases = cursor.fetchall()
     cursor.execute("""
-        SELECT h.hexagram_id, h.number, h.name_english, h.judgment_text,
+        SELECT h.hexagram_id, h.number, h.name_english,
                COUNT(p.phrase_id) as phrase_count
         FROM hexagrams h
         LEFT JOIN phrases p ON h.hexagram_id = p.hexagram_id AND p.status = 'approved'
-        GROUP BY h.hexagram_id, h.number, h.name_english, h.judgment_text
+        GROUP BY h.hexagram_id, h.number, h.name_english
+        ORDER BY phrase_count ASC
+        LIMIT 10
+    """)
+    hexagrams = cursor.fetchall()
+    cursor.execute("""
+        SELECT h.hexagram_id, h.number, h.name_english, h.judgment_text
+        FROM hexagrams h
         ORDER BY h.number
     """)
-    hexagrams = cursor.fetchall()   
+    all_hexagrams = cursor.fetchall()
     cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
     remaining = cursor.fetchone()['total']
+    cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'approved'")
+    total_approved = cursor.fetchone()['total']
     conn.close()
     return render_template_string('''
         <h1>Curation Queue</h1>
-        <h1>Curation Queue</h1>
+        <p>Total phrases in pool: <strong>{{ total_approved }}</strong></p>
         {% if request.args.get('error') %}
         <p style="color:red; font-weight:bold;">Please assign a hexagram before approving.</p>
         {% endif %}   
@@ -195,7 +204,7 @@ def admin_phrases():
             <div style="margin-bottom:10px;">
                 <select name="hexagram_id" style="font-size:14px; padding:4px;">
                     <option value="">-- Assign hexagram --</option>
-                    {% for h in hexagrams %}
+                    {% for h in all_hexagrams %}
                     <option value="{{ h.hexagram_id }}">
                         {{ h.number }} — {{ h.name_english }}: {{ h['judgment_text'][:50] }}...
                     </option>
@@ -211,8 +220,7 @@ def admin_phrases():
         {% if not phrases %}
             <p>The queue is empty.</p>
         {% endif %}
-    ''', phrases=phrases, hexagrams=hexagrams, remaining=remaining)
-
+    ''', phrases=phrases, hexagrams=hexagrams, all_hexagrams=all_hexagrams, remaining=remaining, total_approved=total_approved)
 @app.route('/admin/mobile')
 @require_auth
 def admin_mobile():
