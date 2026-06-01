@@ -135,5 +135,25 @@ The project intentionally frames AI as collaborator rather than tool — the sam
 The gamification loop: you contribute something of yourself anonymously → you receive something unexpected back. That exchange sustains participation.
 
 ---
+## June 1, 2026
+
+### Distill into Poetry feature — COMPLETE and deployed
+
+**What was built:**
+- "Distill into poetry" button on result.html — gold, visually distinct
+- Calls /distill route in app.py on first click, caches result for subsequent toggles
+- Claude API (claude-opus-4-5) reshapes raw exquisite corpse lines into Adj Noun, Verb — Adj Noun pattern
+- If a line resists parsing, Claude draws a replacement from the emotional territory of surrounding lines
+- Distilled poem renders in gold (#C9A84C) with "distilled form" label
+- "Return to dream" toggle restores raw poem
+- Raw submissions remain untouched in database — distillation is output-only
+
+**Technical notes:**
+- anthropic library added to requirements.txt
+- ANTHROPIC_API_KEY set as environment variable in Render
+- Distilled result cached client-side — API called once per session per poem
+
+**Philosophical note:**
+Distillation is framed as interpretation, not transformation. The dream cannot be changed, only read differently. Claude's reshaping is the programmatic equivalent of the human curation layer — a collaborator, not an editor.
 
 *Paste this file (or relevant sections) at the start of a new session with Claude to restore project context quickly.*
