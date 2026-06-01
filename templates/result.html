@@ -41,19 +41,18 @@
             text-transform: uppercase;
             margin-bottom: 1.5rem;
         }
- 
+
         .poem {
             font-size: 1.2rem;
             line-height: 2;
             font-style: italic;
             color: #F5F2EC;
             white-space: pre-line;
-            margin-bottom: 3rem;
+            margin-bottom: 1.5rem;
             padding: 0 1rem;
             text-align: left;
             padding-left: 2rem;
             text-indent: -1rem;
-}   
         }
 
         .silence {
@@ -61,6 +60,64 @@
             color: #444;
             font-style: italic;
             margin-bottom: 3rem;
+        }
+
+        .distill-btn {
+            background: none;
+            border: 1px solid #2a2a2a;
+            color: #555;
+            font-family: Georgia, serif;
+            font-size: 0.8rem;
+            letter-spacing: 0.1em;
+            padding: 0.5rem 1.4rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 2rem;
+            display: inline-block;
+        }
+
+        .distill-btn:hover {
+            border-color: #C9A84C;
+            color: #C9A84C;
+        }
+
+        .distill-btn.active {
+            border-color: #C9A84C;
+            color: #C9A84C;
+        }
+
+        .distill-label {
+            font-size: 0.75rem;
+            color: #333;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .distill-label.visible {
+            display: block;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .distilled-poem {
+            font-size: 1.2rem;
+            line-height: 2;
+            font-style: italic;
+            color: #C9A84C;
+            white-space: pre-line;
+            margin-bottom: 2rem;
+            padding: 0 1rem;
+            text-align: left;
+            padding-left: 2rem;
+            text-indent: -1rem;
+            display: none;
+            opacity: 0.85;
+        }
+
+        .distilled-poem.visible {
+            display: block;
+            animation: fadeIn 0.6s ease forwards;
         }
 
         .divider {
@@ -91,7 +148,6 @@
             color: #C9A84C;
         }
 
-        /* Reveal toggle */
         .reveal-btn {
             display: block;
             background: none;
@@ -108,9 +164,7 @@
             transition: color 0.3s;
         }
 
-        .reveal-btn:hover {
-            color: #C9A84C;
-        }
+        .reveal-btn:hover { color: #C9A84C; }
 
         .iching-details {
             display: none;
@@ -169,7 +223,15 @@
         <div class="gift-label">Rocky offers you this</div>
 
         {% if result.poem %}
-            <div class="poem">{{ result.poem }}</div>
+            <div class="poem" id="raw-poem">{{ result.poem }}</div>
+
+            <div class="distill-label" id="distill-label">distilled form</div>
+            <div class="distilled-poem" id="distilled-poem"></div>
+
+            <button class="distill-btn" id="distill-btn" onclick="toggleDistill()">
+                distill into form
+            </button>
+
         {% else %}
             <div class="silence">
                 The pool is quiet for this moment.<br>
@@ -210,6 +272,72 @@
     </div>
 
     <script>
+        var distilledCache = null;
+        var distilled = false;
+
+        function toggleDistill() {
+            var btn = document.getElementById('distill-btn');
+            var rawPoem = document.getElementById('raw-poem');
+            var distilledPoem = document.getElementById('distilled-poem');
+            var distillLabel = document.getElementById('distill-label');
+
+            if (distilled) {
+                // Return to dream
+                rawPoem.style.display = 'block';
+                distilledPoem.classList.remove('visible');
+                distillLabel.classList.remove('visible');
+                btn.textContent = 'distill into form';
+                btn.classList.remove('active');
+                distilled = false;
+                return;
+            }
+
+            if (distilledCache) {
+                // Already fetched — just show it
+                showDistilled(distilledCache);
+                return;
+            }
+
+            // First time — call the API
+            btn.textContent = 'distilling...';
+            btn.disabled = true;
+
+            var rawLines = document.getElementById('raw-poem')
+                .innerText.split('\n')
+                .filter(function(l) { return l.trim() !== ''; });
+
+            fetch('/distill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lines: rawLines })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                distilledCache = data.distilled;
+                showDistilled(data.distilled);
+                btn.disabled = false;
+            })
+            .catch(function() {
+                btn.textContent = 'distill into form';
+                btn.disabled = false;
+            });
+        }
+
+        function showDistilled(text) {
+            var btn = document.getElementById('distill-btn');
+            var rawPoem = document.getElementById('raw-poem');
+            var distilledPoem = document.getElementById('distilled-poem');
+            var distillLabel = document.getElementById('distill-label');
+
+            rawPoem.style.display = 'none';
+            distilledPoem.textContent = text;
+            distilledPoem.classList.add('visible');
+            distillLabel.classList.add('visible');
+            btn.textContent = 'return to dream';
+            btn.classList.add('active');
+            distilled = true;
+        }
+
         function toggleDetails() {
             var details = document.getElementById('iching-details');
             var btn = document.querySelector('.reveal-btn');

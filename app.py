@@ -4,6 +4,7 @@ import psycopg2.extras
 import random
 import uuid
 import os
+import anthropic
 from functools import wraps
 
 app = Flask(__name__)
@@ -279,6 +280,41 @@ def curate():
     conn.close()
 
     return redirect(redirect_to + '#queue')
+@app.route('/distill', methods=['POST'])
+def distill():
+    lines = request.json.get('lines', [])
+    if not lines:
+        return jsonify({'error': 'no lines provided'}), 400
+
+    poem_text = '\n'.join(lines)
+
+    client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+    message = client.messages.create(
+        model="claude-opus-4-20250514",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": f"""You are distilling a surrealist dream poem into a more formal poetic structure.
+
+For each line of the poem, extract the essential images and rewrite the line following this pattern:
+Adjective Noun, Verb — Adjective Noun
+
+Rules:
+- Each distilled line must follow exactly: Adjective Noun, Verb — Adjective Noun
+- Preserve the emotional and imagistic essence of the original line
+- If a line resists clean parsing, draw a new image from the emotional territory of the surrounding lines rather than forcing or discarding it
+- Return ONLY the distilled poem lines, one per line, no explanation, no preamble
+
+Original poem:
+{poem_text}"""
+            }
+        ]
+    )
+
+    distilled = message.content[0].text.strip()
+    return jsonify({'distilled': distilled})
 
 if __name__ == '__main__':
     app.run(debug=True)
