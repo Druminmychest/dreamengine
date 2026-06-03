@@ -2,3 +2,5 @@ dreamengine.db
 seed_phrases.txt
 __pycache__/
 *.pyc
+migrate_to_postgres.py
+seed_hexagrams.py
