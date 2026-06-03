@@ -288,24 +288,72 @@ def distill():
 
     poem_text = '\n'.join(lines)
 
+    recipes = [
+        {
+            "name": "structured",
+            "instruction": """Distill each line into this exact pattern: Adjective Noun, Verb — Adjective Noun
+Rules:
+- Each line must follow exactly: Adjective Noun, Verb — Adjective Noun
+- Preserve the emotional and imagistic essence
+- If a line resists parsing, draw from the emotional territory of surrounding lines"""
+        },
+        {
+            "name": "imagist",
+            "instruction": """Distill this poem in the imagist tradition.
+Rules:
+- Each line should be a single concrete image, no abstraction
+- Short, direct, sensory — what can be seen, heard, felt
+- No explanation, no metaphor stated explicitly — only the image itself
+- 3 to 5 words per line maximum"""
+        },
+        {
+            "name": "incantatory",
+            "instruction": """Distill this poem as an incantation or ritual chant.
+Rules:
+- Use repetition and accumulation deliberately
+- Lines should build on each other rhythmically
+- Anaphora encouraged — beginning multiple lines with the same word or phrase
+- Should feel like something spoken aloud in darkness"""
+        },
+        {
+            "name": "fragmented",
+            "instruction": """Distill this poem as fragmented consciousness.
+Rules:
+- Incomplete thoughts are acceptable and encouraged
+- Use ellipses to suggest continuation or absence
+- Lines can be as short as two words
+- Gaps and silences are part of the poem
+- Do not resolve or complete what resists completion"""
+        },
+        {
+            "name": "declarative",
+            "instruction": """Distill this poem as a series of strange declarative statements.
+Rules:
+- Each line states something as plain fact, however surreal
+- No questions, no conditionals, no hedging
+- The stranger the fact the better, as long as it feels true to the original
+- Simple subject-verb-object construction preferred"""
+        },
+    ]
+
+    recipe = random.choice(recipes)
+
     client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-haiku-4-5-20251001",
         max_tokens=1024,
         messages=[
             {
                 "role": "user",
-                "content": f"""You are distilling a surrealist dream poem into a more formal poetic structure.
+                "content": f"""You are distilling a surrealist dream poem into a specific poetic form.
 
-For each line of the poem, extract the essential images and rewrite the line following this pattern:
-Adjective Noun, Verb — Adjective Noun
+{recipe['instruction']}
 
-Rules:
-- Each distilled line must follow exactly: Adjective Noun, Verb — Adjective Noun
-- Preserve the emotional and imagistic essence of the original line
-- If a line resists clean parsing, draw a new image from the emotional territory of the surrounding lines rather than forcing or discarding it
-- Return ONLY the distilled poem lines, one per line, no explanation, no preamble
+General rules for all forms:
+- Preserve the emotional and imagistic essence of the original
+- Return ONLY the distilled poem lines, one per line
+- No explanation, no preamble, no labels
 
 Original poem:
 {poem_text}"""
@@ -314,7 +362,7 @@ Original poem:
     )
 
     distilled = message.content[0].text.strip()
-    return jsonify({'distilled': distilled})
+    return jsonify({'distilled': distilled, 'form': recipe['name']})
 
 if __name__ == '__main__':
     app.run(debug=True)
