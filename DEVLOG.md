@@ -1,6 +1,6 @@
 # DEVLOG — Rocky's Dream Engine
 *Maintained by: Rob Roach (robertdroach)*
-*Last updated: June 1, 2026*
+*Last updated: June 5, 2026*
 
 ---
 
@@ -9,6 +9,8 @@
 An art project / web application combining the I Ching oracle structure with surrealist exquisite corpse poetry generation. Users submit phrases anonymously, a human curator assigns them to one of 64 I Ching hexagrams, and the system generates a poem drawn from the dream pool when a user submits a new phrase.
 
 The project is a deliberate collaboration between human unconscious (phrase contributions) and AI assembly — the AI is a co-creator, not a tool.
+
+Rocky is the presiding intelligence of the project — named for Rob's closest friend, a father figure who died during Covid. The project is a tribute: an attempt to crystallize and pass forward the texture of a particular human soul.
 
 ---
 
@@ -21,24 +23,28 @@ The project is a deliberate collaboration between human unconscious (phrase cont
 
 ---
 
-## Current Status (as of June 1, 2026)
+## Current Status (as of June 5, 2026)
 
-**LIVE and deployed at: https://dreamengine.onrender.com**
+**LIVE and deployed at: https://dreamengine.lightclub.cloud**
 
 ### What is working:
-- Public submission interface (mobile-first, visually rich, dark palette with gold accents)
+- Public submission interface (mobile-first, dark palette with gold accents)
 - I Ching consultation algorithm
 - Exquisite corpse poem generator drawing from PostgreSQL dream pool
 - Poem + hexagram text returned to user as oracle reading
-- Protected admin curation interface at `/admin/phrases` (HTTP Basic Auth)
-- Admin can approve/reject phrases and assign hexagram from dropdown
+- "Distill into Poetry" button — reshapes poem via Anthropic API
+- Protected admin curation interface at `/admin/phrases`
+- Mobile curation interface at `/admin/mobile`
+- Rocky's Time Machine at `/time-machine` — four temporal windows, daily caching
+- Rocky's humours navigation — persistent fixed bar across all pages
+- Coming-soon pages for Rocky Reasoning (`/coming-soon/reasoning`) and Rocky Listening (`/coming-soon/listening`)
+- About page at `/about` — explains Dream Engine, Time Machine, and humours selector
 - PostgreSQL database on Render (Ohio region)
 - GitHub repo: https://github.com/Druminmychest/dreamengine
 
 ### Database state:
-- Approximately 156+ approved phrases in the dream pool at last check
-- Seed dataset drawn from Rob's own artistic writings
-- PostgreSQL (upgraded from SQLite during deployment phase)
+- 500+ approved phrases in the dream pool
+- `time_machine_cache` table added — stores daily Time Machine narratives per era
 
 ---
 
@@ -52,18 +58,38 @@ The project is a deliberate collaboration between human unconscious (phrase cont
 | Hosting | Render (free tier) |
 | Version control | GitHub (Druminmychest/dreamengine) |
 | Frontend | HTML/CSS templates, mobile-first |
+| AI | Anthropic API (claude-sonnet-4-6) |
 
 ### Key files:
 - `app.py` — main Flask application, all routes
 - `templates/index.html` — public submission interface
 - `templates/result.html` — oracle/poem output page
-- `requirements.txt` — Flask, gunicorn, requests, beautifulsoup4, psycopg2
+- `templates/time_machine.html` — Rocky's Time Machine
+- `templates/about.html` — project description
+- `templates/coming_soon.html` — placeholder for future lobes
+- `requirements.txt` — Flask, gunicorn, psycopg2, anthropic
 - `Procfile` — `web: gunicorn app:app`
 
 ### Environment variables (set in Render dashboard, NOT in code):
 - `DATABASE_URL` — PostgreSQL connection string
 - `ADMIN_USERNAME` — admin login
 - `ADMIN_PASSWORD` — admin password
+- `ANTHROPIC_API_KEY` — Anthropic API key
+
+---
+
+## Rocky's Architecture — The Four Humours
+
+Rocky is not a single app. Rocky is a presence with four distinct modes of consciousness, navigable via a persistent fixed bar of colored dots at the top of every page. The concept draws on Aristotle's four aspects of the human soul.
+
+| Lobe | Color | Status | Description |
+|------|-------|--------|-------------|
+| Dream Engine | Gold #C9A84C | Live | Surrealist oracle. Rocky dreaming through collective human expression. |
+| Time Machine | Teal #5DCAA5 | Live | Daily historical narratives. Rocky remembering, witnessing the sweep of history. |
+| Rocky Reasoning | Blue #85B7EB | Coming soon | Rocky thinking through a problem. Straight-talking, no-nonsense wisdom. |
+| Rocky Listening | Purple #AFA9EC | Coming soon | Rocky as confessor, sounding board, old friend in the chair across from you. |
+
+The nav dots are persistent and fixed at the top of every page. Active lobe is full opacity; available lobes are dimmed; coming-soon lobes are nearly invisible. Hover tooltips show lobe names on desktop.
 
 ---
 
@@ -77,135 +103,152 @@ The project is a deliberate collaboration between human unconscious (phrase cont
 
 **Human curation layer:** All phrases pass through Rob's intuitive hexagram assignment before entering the pool. This is a feature, not a bottleneck — it's where the artistic intelligence lives.
 
-**Mobile-first web (not native app):** Lower barrier, no app store, easier to iterate. Native app is a future consideration.
+**Mobile-first web (not native app):** Lower barrier, no app store, easier to iterate.
+
+**Time Machine — daily caching:** API calls are made once per era per day and cached in PostgreSQL. Subsequent loads serve from cache instantly. Rocky speaks once a day — this is intentional, not a limitation.
 
 ---
 
 ## Known Limitations / Technical Debt
 
-- **Render free tier spin-down:** First load after 15 minutes of inactivity takes 30–60 seconds. Beta testers should be warned.
-- **Database password rotation:** Free tier Render does not allow password changes in the UI. Credential has appeared in chat history — be mindful of further exposure.
-- **Admin interface:** Still relatively bare HTML compared to public face. Functional but inconsistent aesthetically. Not urgent pre-beta.
-- **Return button on result page:** May be too subtle on mobile — worth user testing.
+- **Render free tier spin-down:** First load after 15 minutes of inactivity takes 30–60 seconds.
+- **Database password rotation:** Free tier Render does not allow password changes in UI.
+- **Admin interface aesthetics:** Still inconsistent with public face. Functional but bare.
+- **RealDictCursor:** `get_db()` uses `RealDictCursor` globally — cache reads in `rocky_api` must use explicit `DictCursor` and key-based access (`row['title']` etc.) rather than tuple unpacking.
 
 ---
 
 ## Decisions Deferred / Future Work
 
-### Poetic Form Filter ("Impose Poetic Form" toggle)
-- Discussed imposing Adj-Noun-Verb-Adj-Noun structure on output assembly
-- Decision: deferred. Surrealist argument against uniform structure is valid; raw output may be more generatively powerful.
-- If revisited: toggle on output side (not submission), submissions stay raw in DB, NLP library (spaCy) at assembly time. Graceful fallback needed for surrealist phrases that resist parsing.
-- **NLP = Natural Language Processing** — library-based part-of-speech tagging (spaCy is the recommended Python library)
+### Lobe 3 — Rocky Reasoning
+- Rocky thinking through a problem with the user
+- Coming-soon page live at `/coming-soon/reasoning`
 
-### Rocky the Character
-- A character/persona associated with the project
-- Design intentionally deferred — will become clearer as the project develops
-- Not in the current interface
+### Lobe 4 — Rocky Listening
+- Rocky as confessor, sounding board, old friend
+- Coming-soon page live at `/coming-soon/listening`
+- Character details for this lobe: Rocky's favorite beer was Beamish (no longer available in the US). His favorite scotch was Oban. These specifics belong in Lobe 4's character definition.
+
+### Time Machine — 10,000-year window refinement
+- Currently roams freely across the Neolithic world — may benefit from regional anchoring if output feels disjointed in practice
+- Revisit after more usage data
+
+### Time Machine — "Ask Rocky more" feature
+- After reading a daily narrative, user should be able to ask Rocky to go deeper
+- Requires passing the generated narrative back into a new conversation context
+
+### Lobe toggle UX
+- Currently separate pages; eventually should feel like Rocky turning his attention rather than navigating between pages
+- Transition design deferred until both active lobes are mature
 
 ### Database scaling
 - Current: Render managed PostgreSQL, free tier
-- Future: Will need upgrade path for millions of entries and concurrent users
-- Flask + SQLAlchemy makes PostgreSQL migration straightforward when needed
-
-### Native mobile app
-- Future consideration after web interface is proven
-- Current responsive web-first approach is the right scale for now
-
-### Beta testing
-- Planned: small subset of human beta testers pre-launch during PoC phase
-- Will also contribute to seed phrase pool during beta
+- Future: upgrade path needed for scale
 
 ---
 
 ## Aesthetic / Design Direction
 
-- Dark background, gold accent (#C9A84C), contemplative and slightly mysterious
-- Mobile-first layout
-- Minimal friction on submission — single input, low barrier
-- Poem has breathing room on result page
-- Whimsical and visually rich rather than clinical
+- Dark background (#0A0A0A / #0E0E0E), gold accent (#C9A84C), contemplative and slightly mysterious
+- Mobile-first layout, renders well on cell
+- Rocky's Time Machine uses EB Garamond (serif) for narrative text — tactile weight
+- Dream Engine uses Georgia throughout — warmer, more personal
+- Color system: gold (dream), teal (time), blue (reason), purple (listen) — consistent across nav dots and era card pips
 
 ---
 
-## Conceptual Notes (for context in future sessions)
+## Conceptual Notes
 
-The project intentionally frames AI as collaborator rather than tool — the same way Rob's unconscious is imprinted on the seed pool, the AI's aggregate-of-human-expression nature is acknowledged as a structural element. The two "fishbowls" working together is a core metaphor.
+The Dream Engine and the Time Machine are not two different ideas. They are the same impulse pointing in opposite directions:
+- The Dream Engine reaches **inward and forward** — into the collective subconscious, generating something new from pooled human truth.
+- The Time Machine reaches **outward and backward** — into the collective memory, finding the human signal in the historical record.
 
-The gamification loop: you contribute something of yourself anonymously → you receive something unexpected back. That exchange sustains participation.
+Both refuse to let texture be lost. Both are Rocky.
+
+Rocky's voice in the Time Machine: intimate, first-person, elegiac without being mournful. Speaking as if sitting with an old friend around a campfire late at night — not performing, not lecturing, just telling the truth about what he saw and what it meant.
+
+The tagline: *"Every day is the echo of ten thousand days before it."*
 
 ---
+
 ## June 1, 2026
 
 ### Distill into Poetry feature — COMPLETE and deployed
 
-**What was built:**
-- "Distill into poetry" button on result.html — gold, visually distinct
-- Calls /distill route in app.py on first click, caches result for subsequent toggles
-- Claude API (claude-opus-4-5) reshapes raw exquisite corpse lines into Adj Noun, Verb — Adj Noun pattern
-- If a line resists parsing, Claude draws a replacement from the emotional territory of surrounding lines
-- Distilled poem renders in gold (#C9A84C) with "distilled form" label
-- "Return to dream" toggle restores raw poem
-- Raw submissions remain untouched in database — distillation is output-only
-
-**Technical notes:**
-- anthropic library added to requirements.txt
-- ANTHROPIC_API_KEY set as environment variable in Render
-- Distilled result cached client-side — API called once per session per poem
-
-**Philosophical note:**
-Distillation is framed as interpretation, not transformation. The dream cannot be changed, only read differently. Claude's reshaping is the programmatic equivalent of the human curation layer — a collaborator, not an editor.
+- "Distill into poetry" button on result.html
+- Calls /distill route, caches result client-side
+- Claude API reshapes raw lines into structured poetic form
+- 5 rotating recipes: structured, imagist, incantatory, fragmented, declarative
+- Distilled poem renders in gold; "return to dream" toggle restores raw poem
 
 ---
+
 ## June 3, 2026
 
-### Session summary — significant infrastructure and interface work
+### Session summary — infrastructure and interface work
 
-**Custom domain:**
-- DNS CNAME record added at Namecheap: dreamengine.lightclub.cloud → dreamengine.onrender.com
-- SSL certificate provisioned by Render automatically
-- Project now live at: https://dreamengine.lightclub.cloud
-
-**Mobile curation interface — COMPLETE:**
-- New route /admin/mobile with mobile-optimized layout
-- One phrase at a time, large touch targets, comfortable thumb navigation
-- Approve/reject redirects immediately to next phrase
-- Remaining phrase count displayed
-- Same HTTP Basic Auth protection as desktop admin
-
-**Distill function — recipe variety added:**
-- Single Adj-Noun-Verb-Adj-Noun pattern replaced with 5 rotating recipes chosen randomly per call
-- Recipes: structured, imagist, incantatory, fragmented, declarative
-- Model updated from claude-opus-4-5 to claude-haiku-4-5-20251001 (faster, cost-efficient)
-- Recipe name returned in JSON but not displayed to user — preserves mystery
-- $5 Anthropic API credit added for testing; monitor at console.anthropic.com
-
-**About page — COMPLETE:**
-- New route /about with full project description
-- "what is this?" link added to index.html footer, gold colored, centered on own line
-- Text anchored around: "a surrealist oracle built from collective human expression"
-- Oblique strategies framing added for creative use of output
-- "ghosts of other human's emotions — impressions of their lives on the coalbed of human expression" — Rob's phrase, used verbatim
-
-**Interface refinements:**
-- Poem line wrapping fixed with hanging indent (text-indent: -1rem, padding-left: 2rem)
-- Footer contrast improved across index.html
-- "what is this?" link separated onto own centered line to prevent mobile wrap
-
-**Dream pool status:**
+- Custom domain: dreamengine.lightclub.cloud (CNAME at Namecheap, SSL via Render)
+- Mobile curation interface at /admin/mobile
+- About page at /about with "what is this?" link in footer
+- Poem line wrapping fixed with hanging indent
 - 503 approved phrases as of this session
-- 149 additional phrases imported from new seed batch
-- import_seed.py updated to write directly to PostgreSQL via DATABASE_URL environment variable
-- migrate_to_postgres.py and seed_hexagrams.py added to .gitignore
 
-**Known issues / deferred:**
-- Render free tier spin-down still in effect — upgrade to $7/month Starter when ready for beta
-- Database password rotation not possible on Render free tier UI
-- Admin interface aesthetics still inconsistent with public face
+---
 
-**Exquisite corpse mode — considered and deferred:**
-- Discussed adding a toggle for classical exquisite corpse interaction mode
-- Decision: deferred. Pulls in a different direction from the core oracle identity.
-- Worth revisiting as a separate project rather than a feature of this one.
+## June 5, 2026
+
+### Rocky's Time Machine — COMPLETE and deployed
+
+**What was built:**
+- New Flask route `/time-machine` serving `templates/time_machine.html`
+- New Flask route `/api/rocky` — receives system prompt, user prompt, and era_id; checks PostgreSQL cache; calls Anthropic API on cache miss; stores result; returns JSON
+- Four temporal windows: 10 years (teal), 100 years (blue), 1,000 years (purple), 10,000 years (amber)
+- Each window has: era label, year display, evocative title, Rocky's narrative (3-4 sentences), context pills (3 grounding facts), confidence bar
+- Confidence bars fixed per era: 92% / 65% / 35% / 15%
+- Daily caching in new `time_machine_cache` PostgreSQL table — one API call per era per day
+- All four windows load simultaneously on page load
+- "Show me something else" button removed — Rocky speaks once a day
+
+**Rocky's voice:**
+- System prompt: timeless witness, campfire intimacy, elegiac without mournful, never lectures, finds texture of daily life as significant as decisions of kings
+- Prompts instruct Rocky to find a fresh entry point each time — never open with "Let me show you" or variants
+- Broadly human — reaches beyond Western history intentionally
+
+**Migration:**
+- `migrate_time_machine_cache.py` — run once against live DATABASE_URL to create cache table
+- Table: `id`, `cache_date`, `era`, `title`, `narrative`, `context_pills`, `created_at`
+- UNIQUE constraint on `(cache_date, era)` — prevents duplicate daily entries
+
+**Technical note — RealDictCursor gotcha:**
+- `get_db()` sets `RealDictCursor` globally, which returns rows as dicts
+- Tuple unpacking (`title, narrative, context_pills = row`) returns dict keys as values, not column data
+- Fix: use `conn.cursor(cursor_factory=psycopg2.extras.DictCursor)` for cache reads and access by key: `row['title']`, `row['narrative']`, `row['context_pills']`
+
+### Rocky's humours navigation — COMPLETE and deployed
+
+- Persistent fixed nav bar at top of all pages
+- Label: "Rocky's humours" (color #6a6560)
+- Four colored dots: gold (Dream Engine), teal (Time Machine), blue (Reasoning), purple (Listening)
+- Active dot: full opacity. Available: 0.3 opacity. Coming-soon: 0.15 opacity.
+- Hover tooltip renders below dot (not above) — desktop only
+- Body padding-top: 6rem on all pages to clear fixed bar
+
+### Coming-soon pages — COMPLETE and deployed
+
+- Route: `/coming-soon/<lobe>` — accepts 'reasoning' or 'listening'
+- Template: `templates/coming_soon.html` — same dark aesthetic, same nav, Rocky's quote
+- Rocky's quote (verbatim): *"I have to go to the hardware store to get more lumber. I'm all out. But don't worry, we'll get it done in time.... or we won't and you will be stuck wondering what it would have looked like."*
+- These pages serve as architectural foundations for Lobes 3 and 4
+
+### About page — updated
+
+- Added Rocky's humours section: explains dot selector with inline illustration
+- Added Rocky's Time Machine section: explains four windows, confidence bar, daily cadence
+- Nav bar added for consistency
+
+### result.html — updated
+
+- Nav bar added for consistency with all other pages
+- No other changes
 
 *Paste this file (or relevant sections) at the start of a new session with Claude to restore project context quickly.*
