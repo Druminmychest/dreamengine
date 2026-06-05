@@ -341,7 +341,7 @@ Rules:
     client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
     message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model='claude-sonnet-4-6',
         max_tokens=1024,
         messages=[
             {
@@ -364,5 +364,111 @@ Original poem:
     distilled = message.content[0].text.strip()
     return jsonify({'distilled': distilled, 'form': recipe['name']})
 
+@app.route('/time-machine')
+def time_machine():
+    return render_template('time_machine.html')
+
+
+@app.route('/api/rocky', methods=['POST'])
+def rocky_api():
+    from datetime import date
+    data          = request.json
+    system_prompt = data.get('system', '')
+    user_prompt   = data.get('prompt', '')
+    era_id        = data.get('era_id', '')
+
+    if not system_prompt or not user_prompt or not era_id:
+        return jsonify({'error': 'missing system, prompt, or era_id'}), 400
+
+    today = date.today()
+
+    # ── Check cache first ──
+    try:
+        conn = get_db()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(
+            "SELECT title, narrative, context_pills FROM time_machine_cache WHERE cache_date = %s AND era = %s",
+            (today, era_id)
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if row:
+            title      = row['title']
+            narrative  = row['narrative']
+            context_pills = row['context_pills']
+            return jsonify({
+                'cached': True,
+                'title': title,
+                'narrative': narrative,
+                'context_pills': context_pills
+            })
+
+    except Exception as e:
+        # If cache check fails, fall through to API call
+        pass
+
+    # ── Cache miss — call Anthropic ──
+    try:
+        client  = anthropic.Anthropic()
+        message = client.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=600,
+            system=system_prompt,
+            messages=[{'role': 'user', 'content': user_prompt}]
+        )
+        text = message.content[0].text
+
+        # ── Parse and store in cache ──
+        import re
+        title_match     = re.search(r'TITLE:\s*(.+)', text, re.IGNORECASE)
+        narrative_match = re.search(r'NARRATIVE:\s*([\s\S]+?)(?=\nCONTEXT:|CONTEXT:|$)', text, re.IGNORECASE)
+        context_match   = re.search(r'CONTEXT:\s*(.+)', text, re.IGNORECASE)
+
+        title         = title_match.group(1).strip()     if title_match     else 'A moment in history'
+        narrative     = narrative_match.group(1).strip() if narrative_match else text
+        context_pills = context_match.group(1).strip()   if context_match   else ''
+
+        try:
+            conn = get_db()
+            cur  = conn.cursor()
+            cur.execute(
+                """INSERT INTO time_machine_cache (cache_date, era, title, narrative, context_pills)
+                   VALUES (%s, %s, %s, %s, %s)
+                   ON CONFLICT (cache_date, era) DO NOTHING""",
+                (today, era_id, title, narrative, context_pills)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as cache_err:
+            print(f"CACHE WRITE ERROR: {cache_err}")
+
+        return jsonify({'text': text, 'cached': False})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/coming-soon/<lobe>')
+def coming_soon(lobe):
+    lobes = {
+        'reasoning': {
+            'name': "Rocky Reasoning",
+            'description': "Rocky thinking through a problem with you. His particular brand of straight-talking, no-nonsense wisdom applied to the present.",
+            'dot_class': 'dot-reason',
+            'dot_color': '#85B7EB',
+        },
+        'listening': {
+            'name': "Rocky Listening",
+            'description': "Rocky as confessor, sounding board, old friend in the chair across from you.",
+            'dot_class': 'dot-listen',
+            'dot_color': '#AFA9EC',
+        },
+    }
+    lobe_data = lobes.get(lobe, lobes['reasoning'])
+    return render_template('coming_soon.html', lobe=lobe_data)
+ 
 if __name__ == '__main__':
     app.run(debug=True)

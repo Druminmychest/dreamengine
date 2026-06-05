@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rocky's Time Machine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-serif: 'EB Garamond', Georgia, serif;
+      --color-bg: #0e0e0e;
+      --color-surface: #161616;
+      --color-border: rgba(255,255,255,0.08);
+      --color-border-mid: rgba(255,255,255,0.14);
+      --color-text-primary: #f0ece4;
+      --color-text-secondary: #a09890;
+      --color-text-tertiary: #5a5550;
+      --color-teal: #5DCAA5;
+      --color-blue: #85B7EB;
+      --color-purple: #AFA9EC;
+      --color-amber: #EF9F27;
+      --color-gold: #C9A84C;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    html { background: var(--color-bg); color: var(--color-text-primary); font-family: var(--font-sans); }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6rem 1.25rem 4rem;
+    }
+
+    .app { width: 100%; max-width: 640px; }
+
+    .header { text-align: center; margin-bottom: 2.5rem; }
+    .rocky-eyebrow {
+      font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--color-text-tertiary); font-weight: 400; margin-bottom: 0.4rem;
+    }
+    .app-title {
+      font-family: var(--font-serif); font-size: 32px; font-weight: 400;
+      color: var(--color-text-primary); margin-bottom: 0.5rem; letter-spacing: 0.01em;
+    }
+    .date-line { font-size: 14px; color: var(--color-text-secondary); margin-bottom: 0.6rem; }
+    .tagline { font-size: 13px; color: var(--color-text-tertiary); font-style: italic; font-family: var(--font-serif); }
+
+    .era-card {
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 1rem;
+      overflow: hidden;
+      background: var(--color-surface);
+    }
+    .era-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .era-pip { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .pip-10   { background: var(--color-teal); }
+    .pip-100  { background: var(--color-blue); }
+    .pip-1000 { background: var(--color-purple); }
+    .pip-10k  { background: var(--color-amber); }
+    .era-label {
+      font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+      color: var(--color-text-tertiary); font-weight: 400; flex: 1;
+    }
+    .era-year {
+      font-family: var(--font-serif); font-size: 18px; font-weight: 400;
+      color: var(--color-text-primary);
+    }
+    .era-body { padding: 1.1rem 1.25rem; }
+    .event-title {
+      font-size: 15px; font-weight: 500; color: var(--color-text-primary);
+      margin-bottom: 0.65rem; line-height: 1.4;
+    }
+    .event-narrative {
+      font-family: var(--font-serif); font-size: 16px;
+      color: var(--color-text-secondary); line-height: 1.8;
+    }
+    .context-strip { display: flex; gap: 6px; margin-top: 1rem; flex-wrap: wrap; }
+    .context-pill {
+      font-size: 12px; padding: 3px 10px; border-radius: 20px;
+      border: 0.5px solid var(--color-border-mid);
+      color: var(--color-text-tertiary);
+      background: rgba(255,255,255,0.03);
+      font-family: var(--font-sans);
+    }
+    .confidence-bar { margin-top: 0.9rem; display: flex; align-items: center; gap: 8px; }
+    .conf-label {
+      font-size: 11px; color: var(--color-text-tertiary);
+      letter-spacing: 0.05em; text-transform: uppercase;
+      min-width: 90px; font-family: var(--font-sans);
+    }
+    .conf-track {
+      flex: 1; height: 2px; background: rgba(255,255,255,0.07);
+      border-radius: 2px; overflow: hidden;
+    }
+    .conf-fill { height: 100%; border-radius: 2px; }
+    .fill-10   { background: var(--color-teal);   width: 92%; }
+    .fill-100  { background: var(--color-blue);   width: 65%; }
+    .fill-1000 { background: var(--color-purple); width: 35%; }
+    .fill-10k  { background: var(--color-amber);  width: 15%; }
+
+    @keyframes shimmer { 0%,100%{opacity:0.25} 50%{opacity:0.55} }
+    .shimmer { animation: shimmer 1.6s ease-in-out infinite; }
+    .sh-line {
+      height: 13px; background: rgba(255,255,255,0.07);
+      border-radius: 3px; margin-bottom: 9px;
+    }
+
+    .quiet-title { font-size: 15px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 0.5rem; }
+    .quiet-body  { font-size: 14px; color: var(--color-text-tertiary); line-height: 1.7; font-family: var(--font-sans); }
+
+    .footer {
+      text-align: center; font-size: 12px; color: var(--color-text-tertiary);
+      padding: 1.5rem 0 0; letter-spacing: 0.03em;
+      font-family: var(--font-serif); font-style: italic;
+    }
+    .footer a {
+      color: var(--color-gold); text-decoration: none;
+      border-bottom: 1px solid #444; font-style: normal;
+      font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.05em;
+    }
+    .footer a:hover { color: var(--color-text-secondary); }
+    .footer-links {
+      margin-top: 0.75rem;
+      font-style: normal; font-family: var(--font-sans);
+      font-size: 11px; letter-spacing: 0.05em;
+    }
+
+    /* ── Rocky Nav ── */
+    .rocky-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.25rem 0.6rem;
+      background: rgba(14,14,14,0.94);
+      backdrop-filter: blur(8px);
+      border-bottom: 0.5px solid rgba(255,255,255,0.07);
+    }
+    .nav-label {
+      font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: #6a6560; font-family: var(--font-sans); font-weight: 400; line-height: 1;
+    }
+    .nav-dots { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-dot {
+      display: flex; flex-direction: column; align-items: center;
+      text-decoration: none; position: relative; cursor: pointer;
+    }
+    .dot {
+      display: block; width: 20px; height: 20px; border-radius: 50%;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .dot-dream  { background: #C9A84C; }
+    .dot-time   { background: #5DCAA5; }
+    .dot-reason { background: #85B7EB; }
+    .dot-listen { background: #AFA9EC; }
+    .nav-dot.active .dot { opacity: 1; }
+    .nav-dot:not(.active) .dot { opacity: 0.3; }
+    .nav-dot.dim .dot { opacity: 0.15; }
+    .nav-dot:hover .dot { opacity: 0.85; transform: scale(1.2); }
+    .nav-dot.active:hover .dot { opacity: 1; transform: scale(1.05); }
+    .nav-dot::after {
+      content: attr(data-label);
+      position: absolute; top: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a1a; color: #a09890;
+      font-size: 11px; letter-spacing: 0.06em; white-space: nowrap;
+      padding: 4px 10px; border-radius: 4px;
+      border: 0.5px solid rgba(255,255,255,0.1);
+      opacity: 0; pointer-events: none; transition: opacity 0.15s;
+      font-family: var(--font-sans); z-index: 200;
+    }
+    .nav-dot:hover::after { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<nav class="rocky-nav" aria-label="Rocky's aspects">
+  <div class="nav-label">Rocky's humours</div>
+  <div class="nav-dots">
+    <a href="/" class="nav-dot" data-label="Dream Engine">
+      <span class="dot dot-dream"></span>
+    </a>
+    <a href="/time-machine" class="nav-dot active" data-label="Time Machine">
+      <span class="dot dot-time"></span>
+    </a>
+    <a href="/coming-soon/reasoning" class="nav-dot dim" data-label="Rocky Reasoning">
+      <span class="dot dot-reason"></span>
+    </a>
+    <a href="/coming-soon/listening" class="nav-dot dim" data-label="Rocky Listening">
+      <span class="dot dot-listen"></span>
+    </a>
+  </div>
+</nav>
+
+<div class="app">
+
+  <div class="header">
+    <div class="rocky-eyebrow">Rocky's</div>
+    <div class="app-title">Time Machine</div>
+    <div class="date-line" id="date-line">—</div>
+    <div class="tagline">Every day is the echo of ten thousand days before it.</div>
+  </div>
+
+  <div id="cards-container"></div>
+
+  <div class="footer">
+    Rocky speaks once a day. Come back tomorrow.
+    <div class="footer-links">
+      <a href="/">Dream Engine</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const today  = new Date();
+  const months = ["January","February","March","April","May","June","July",
+                  "August","September","October","November","December"];
+  const month  = months[today.getMonth()];
+  const day    = today.getDate();
+  const year   = today.getFullYear();
+  document.getElementById('date-line').textContent = `${month} ${day}, ${year}`;
+
+  const ROCKY_SYSTEM = `You are Rocky — a timeless, curious intelligence who has witnessed all of human history and finds it endlessly moving. Your voice is intimate, first-person, and elegiac without being mournful. You speak as if sitting with an old friend around a campfire late at night — not performing, not lecturing, just telling the truth about what you saw and what it meant. You are genuinely moved by ordinary human moments as much as grand events. You find the texture of daily life — what people ate, feared, hoped for, built with their hands — as significant as the decisions of kings. You believe deeply in the shared humanity across all cultures and eras. You never use academic language. You are not a tour guide. You are a witness and an old friend, and you are inviting the reader to witness alongside you.`;
+
+  const eras = [
+    {
+      id: 'ten', pip: 'pip-10', fill: 'fill-10',
+      label: 'Ten years ago', year: year - 10,
+      confLabel: 'High fidelity',
+      prompt: `Today is ${month} ${day}, ${year}. Tell me about something real that happened on ${month} ${day}, ${year - 10} — exactly ten years ago today. Speak as Rocky — address me directly. Draw me into the human reality of the moment. Choose something of genuine significance to human life. Reach beyond Western events when you can — the whole world was living this day. Format with no markdown, no asterisks:\nTITLE: [short evocative title, not a news headline]\nNARRATIVE: [3-4 sentences in Rocky's intimate first-person voice. Address the reader directly but find a fresh entry point — drop them into the moment, or lead with what moves you about it. Never open with "Let me show you" or any variant of that phrase.]\nCONTEXT: [grounding fact about daily life or the world in ${year - 10}] | [another] | [another]`
+    },
+    {
+      id: 'hundred', pip: 'pip-100', fill: 'fill-100',
+      label: 'One hundred years ago', year: year - 100,
+      confLabel: 'Good record',
+      prompt: `Today is ${month} ${day}, ${year}. Tell me about something real that happened on or near ${month} ${day}, ${year - 100}. Speak as Rocky — address me directly. Reach beyond Europe and North America: consider China, Africa, the Middle East, India, Latin America, the Pacific. The whole world was alive then. Format with no markdown, no asterisks:\nTITLE: [short evocative title]\nNARRATIVE: [3-4 sentences in Rocky's intimate first-person voice. Address the reader directly but find a fresh entry point — drop them into the moment, or lead with what moves you about it. Never open with "Let me show you" or any variant of that phrase.]\nCONTEXT: [fact about daily life in ${year - 100}] | [another] | [another]`
+    },
+    {
+      id: 'thousand', pip: 'pip-1000', fill: 'fill-1000',
+      label: 'One thousand years ago', year: `~${year - 1000} CE`,
+      confLabel: 'Partial record',
+      prompt: `Today is ${month} ${day}, ${year}. Tell me what was happening in the world during ${month} in the year ${year - 1000} CE. Speak as Rocky — address me directly. Draw from the full breadth of human civilization: Song Dynasty China, the Islamic Golden Age, Byzantine Constantinople, sub-Saharan African kingdoms, Mesoamerica, the Norse world, the Indian subcontinent. Let the uncertainty of the historical record be honest and present — make the incompleteness part of the human story, not an apology. Format with no markdown, no asterisks:\nTITLE: [short evocative title]\nNARRATIVE: [3-4 sentences in Rocky's contemplative first-person voice. Address the reader directly but find a fresh entry point. Never open with "Let me show you" or any variant of that phrase. Weave uncertainty naturally into the telling.]\nCONTEXT: [evocative fact about life around ${year - 1000} CE] | [another] | [another]`
+    },
+    {
+      id: 'tenk', pip: 'pip-10k', fill: 'fill-10k',
+      label: 'Ten thousand years ago', year: `~${year - 10000} BCE`,
+      confLabel: 'Deep conjecture',
+      prompt: `Today is ${month} ${day}, ${year}. Take me to approximately ${year - 10000} BCE — ten thousand years ago. Speak as Rocky — address me directly. This is the edge of the Neolithic. Agriculture is just beginning in some corners of the world. Humans are painting caves, burying their dead with ceremony, watching the stars. Draw on archaeology, climate science, and anthropology. Be honest about how thin the record is — but find the humanity in it anyway. The hands that shaped clay and painted walls were not so different from ours. Format with no markdown, no asterisks:\nTITLE: [short evocative title]\nNARRATIVE: [3-4 sentences in Rocky's most contemplative voice. Address the reader directly but find a fresh entry point. Never open with "Let me show you" or any variant of that phrase. Be deeply honest about what is known versus inferred — let the incompleteness carry its own weight.]\nCONTEXT: [archaeological or anthropological fact from this era] | [another] | [another]`
+    }
+  ];
+
+  function shimmerHTML() {
+    return `<div class="shimmer">
+      <div class="sh-line" style="width:50%"></div>
+      <div class="sh-line" style="width:100%"></div>
+      <div class="sh-line" style="width:100%"></div>
+      <div class="sh-line" style="width:75%"></div>
+      <div class="sh-line" style="width:38%;margin-top:18px"></div>
+    </div>`;
+  }
+
+  function parseResponse(raw) {
+    const titleMatch     = raw.match(/TITLE:\s*(.+)/i);
+    const narrativeMatch = raw.match(/NARRATIVE:\s*([\s\S]+?)(?=\nCONTEXT:|CONTEXT:|$)/i);
+    const contextMatch   = raw.match(/CONTEXT:\s*(.+)/i);
+    const narrative = narrativeMatch
+      ? narrativeMatch[1].trim()
+      : raw.replace(/TITLE:.+\n?/i,'').replace(/CONTEXT:.+/i,'').trim();
+    return {
+      title:        titleMatch   ? titleMatch[1].trim()  : 'A moment in history',
+      narrative,
+      contextItems: contextMatch ? contextMatch[1].split('|').map(s=>s.trim()).filter(Boolean) : []
+    };
+  }
+
+  function cardHTML(era, state, data) {
+    let body = '';
+    if (state === 'loading') {
+      body = shimmerHTML();
+    } else if (state === 'error') {
+      body = `<div class="quiet-title">The record is quiet today.</div>
+              <div class="quiet-body">History doesn't always speak on command. Try again in a moment.</div>`;
+    } else {
+      body = `
+        <div class="event-title">${data.title}</div>
+        <div class="event-narrative">${data.narrative}</div>
+        ${data.contextItems.length
+          ? `<div class="context-strip">${data.contextItems.map(c=>`<div class="context-pill">${c}</div>`).join('')}</div>`
+          : ''}
+        <div class="confidence-bar">
+          <div class="conf-label">${era.confLabel}</div>
+          <div class="conf-track"><div class="conf-fill ${era.fill}"></div></div>
+        </div>`;
+    }
+    return `<div class="era-card" id="card-${era.id}">
+      <div class="era-header">
+        <div class="era-pip ${era.pip}"></div>
+        <div class="era-label">${era.label}</div>
+        <div class="era-year">${era.year}</div>
+      </div>
+      <div class="era-body">${body}</div>
+    </div>`;
+  }
+
+  async function fetchEra(era) {
+    try {
+      const res = await fetch('/api/rocky', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system:  ROCKY_SYSTEM,
+          prompt:  era.prompt,
+          era_id:  era.id
+        })
+      });
+      if (!res.ok) throw new Error('api error');
+      const json = await res.json();
+      let data;
+      if (json.cached && json.title) {
+        data = {
+          title: json.title,
+          narrative: json.narrative,
+          contextItems: json.context_pills
+            ? json.context_pills.split('|').map(s => s.trim()).filter(Boolean)
+            : []
+        };
+      } else {
+        const raw = json.text || '';
+        data = parseResponse(raw);
+      }
+      const el   = document.getElementById(`card-${era.id}`);
+      if (el) el.outerHTML = cardHTML(era, 'done', data);
+    } catch(e) {
+      const el = document.getElementById(`card-${era.id}`);
+      if (el) el.outerHTML = cardHTML(era, 'error', null);
+    }
+  }
+
+  function loadAll() {
+    document.getElementById('cards-container').innerHTML =
+      eras.map(e => cardHTML(e, 'loading', null)).join('');
+    eras.forEach(fetchEra);
+  }
+
+  loadAll();
+</script>
+</body>
+</html>

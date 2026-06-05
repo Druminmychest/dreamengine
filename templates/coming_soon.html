@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ lobe.name }} · Rocky</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-serif: 'EB Garamond', Georgia, serif;
+      --color-bg: #0e0e0e;
+      --color-surface: #161616;
+      --color-border: rgba(255,255,255,0.08);
+      --color-border-mid: rgba(255,255,255,0.14);
+      --color-text-primary: #f0ece4;
+      --color-text-secondary: #a09890;
+      --color-text-tertiary: #5a5550;
+      --color-gold: #C9A84C;
+    }
+
+    html { background: var(--color-bg); color: var(--color-text-primary); font-family: var(--font-sans); }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6rem 1.25rem 4rem;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 640px;
+      text-align: center;
+    }
+
+    .rocky-eyebrow {
+      font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--color-text-tertiary); font-weight: 400; margin-bottom: 0.4rem;
+    }
+
+    .lobe-name {
+      font-family: var(--font-serif); font-size: 32px; font-weight: 400;
+      color: var(--color-text-primary); margin-bottom: 1rem; letter-spacing: 0.01em;
+    }
+
+    .lobe-description {
+      font-family: var(--font-serif); font-size: 17px; font-style: italic;
+      color: var(--color-text-secondary); line-height: 1.8;
+      margin-bottom: 2.5rem;
+    }
+
+    .rocky-quote {
+      border-left: 2px solid var(--color-border-mid);
+      padding: 0.75rem 0 0.75rem 1.25rem;
+      text-align: left;
+      margin: 0 auto 2.5rem;
+      max-width: 480px;
+    }
+    .rocky-quote p {
+      font-family: var(--font-serif); font-size: 17px; font-style: italic;
+      color: var(--color-text-secondary); line-height: 1.8;
+    }
+    .rocky-quote cite {
+      display: block; margin-top: 0.5rem;
+      font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--color-text-tertiary); font-style: normal;
+    }
+
+    .footer {
+      text-align: center; font-size: 11px; color: var(--color-text-tertiary);
+      padding: 1.5rem 0 0; letter-spacing: 0.05em;
+    }
+    .footer a {
+      color: var(--color-gold); text-decoration: none;
+      border-bottom: 1px solid #444;
+    }
+    .footer a:hover { color: var(--color-text-secondary); }
+
+    /* ── Rocky Nav ── */
+    .rocky-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.25rem 0.6rem;
+      background: rgba(14,14,14,0.94);
+      backdrop-filter: blur(8px);
+      border-bottom: 0.5px solid rgba(255,255,255,0.07);
+    }
+    .nav-label {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #6a6560;
+      font-family: var(--font-sans);
+      font-weight: 400;
+      line-height: 1;
+    }
+    .nav-dots {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .nav-dot {
+      display: flex; flex-direction: column; align-items: center;
+      text-decoration: none; position: relative; cursor: pointer;
+    }
+    .dot {
+      display: block; width: 20px; height: 20px; border-radius: 50%;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .dot-dream  { background: #C9A84C; }
+    .dot-time   { background: #5DCAA5; }
+    .dot-reason { background: #85B7EB; }
+    .dot-listen { background: #AFA9EC; }
+    .nav-dot.active .dot { opacity: 1; }
+    .nav-dot:not(.active) .dot { opacity: 0.3; }
+    .nav-dot.dim .dot { opacity: 0.15; }
+    .nav-dot:hover .dot { opacity: 0.85; transform: scale(1.2); }
+    .nav-dot.active:hover .dot { opacity: 1; transform: scale(1.05); }
+    .nav-dot::after {
+      content: attr(data-label);
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a1a; color: #a09890;
+      font-size: 11px; letter-spacing: 0.06em; white-space: nowrap;
+      padding: 4px 10px; border-radius: 4px;
+      border: 0.5px solid rgba(255,255,255,0.1);
+      opacity: 0; pointer-events: none; transition: opacity 0.15s;
+      font-family: var(--font-sans);
+      z-index: 200;
+    }
+    .nav-dot:hover::after { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<nav class="rocky-nav" aria-label="Rocky's aspects">
+  <div class="nav-label">Rocky's humours</div>
+  <div class="nav-dots">
+    <a href="/" class="nav-dot" data-label="Dream Engine">
+      <span class="dot dot-dream"></span>
+    </a>
+    <a href="/time-machine" class="nav-dot" data-label="Time Machine">
+      <span class="dot dot-time"></span>
+    </a>
+    <a href="/coming-soon/reasoning" class="nav-dot {% if lobe.name == 'Rocky Reasoning' %}active{% else %}dim{% endif %}" data-label="Rocky Reasoning">
+      <span class="dot dot-reason"></span>
+    </a>
+    <a href="/coming-soon/listening" class="nav-dot {% if lobe.name == 'Rocky Listening' %}active{% else %}dim{% endif %}" data-label="Rocky Listening">
+      <span class="dot dot-listen"></span>
+    </a>
+  </div>
+</nav>
+
+<div class="app">
+  <div class="rocky-eyebrow">Rocky's</div>
+  <div class="lobe-name">{{ lobe.name }}</div>
+  <div class="lobe-description">{{ lobe.description }}</div>
+
+  <div class="rocky-quote">
+    <p>"I have to go to the hardware store to get more lumber. I'm all out. But don't worry, we'll get it done in time.... or we won't and you will be stuck wondering what it would have looked like."</p>
+    <cite>— Rocky</cite>
+  </div>
+
+  <div class="footer">
+    <a href="/">Dream Engine</a> &nbsp;·&nbsp;
+    <a href="/time-machine">Time Machine</a>
+  </div>
+</div>
+
+</body>
+</html>

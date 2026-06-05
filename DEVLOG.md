@@ -156,4 +156,56 @@ The gamification loop: you contribute something of yourself anonymously → you 
 **Philosophical note:**
 Distillation is framed as interpretation, not transformation. The dream cannot be changed, only read differently. Claude's reshaping is the programmatic equivalent of the human curation layer — a collaborator, not an editor.
 
+---
+## June 3, 2026
+
+### Session summary — significant infrastructure and interface work
+
+**Custom domain:**
+- DNS CNAME record added at Namecheap: dreamengine.lightclub.cloud → dreamengine.onrender.com
+- SSL certificate provisioned by Render automatically
+- Project now live at: https://dreamengine.lightclub.cloud
+
+**Mobile curation interface — COMPLETE:**
+- New route /admin/mobile with mobile-optimized layout
+- One phrase at a time, large touch targets, comfortable thumb navigation
+- Approve/reject redirects immediately to next phrase
+- Remaining phrase count displayed
+- Same HTTP Basic Auth protection as desktop admin
+
+**Distill function — recipe variety added:**
+- Single Adj-Noun-Verb-Adj-Noun pattern replaced with 5 rotating recipes chosen randomly per call
+- Recipes: structured, imagist, incantatory, fragmented, declarative
+- Model updated from claude-opus-4-5 to claude-haiku-4-5-20251001 (faster, cost-efficient)
+- Recipe name returned in JSON but not displayed to user — preserves mystery
+- $5 Anthropic API credit added for testing; monitor at console.anthropic.com
+
+**About page — COMPLETE:**
+- New route /about with full project description
+- "what is this?" link added to index.html footer, gold colored, centered on own line
+- Text anchored around: "a surrealist oracle built from collective human expression"
+- Oblique strategies framing added for creative use of output
+- "ghosts of other human's emotions — impressions of their lives on the coalbed of human expression" — Rob's phrase, used verbatim
+
+**Interface refinements:**
+- Poem line wrapping fixed with hanging indent (text-indent: -1rem, padding-left: 2rem)
+- Footer contrast improved across index.html
+- "what is this?" link separated onto own centered line to prevent mobile wrap
+
+**Dream pool status:**
+- 503 approved phrases as of this session
+- 149 additional phrases imported from new seed batch
+- import_seed.py updated to write directly to PostgreSQL via DATABASE_URL environment variable
+- migrate_to_postgres.py and seed_hexagrams.py added to .gitignore
+
+**Known issues / deferred:**
+- Render free tier spin-down still in effect — upgrade to $7/month Starter when ready for beta
+- Database password rotation not possible on Render free tier UI
+- Admin interface aesthetics still inconsistent with public face
+
+**Exquisite corpse mode — considered and deferred:**
+- Discussed adding a toggle for classical exquisite corpse interaction mode
+- Decision: deferred. Pulls in a different direction from the core oracle identity.
+- Worth revisiting as a separate project rather than a feature of this one.
+
 *Paste this file (or relevant sections) at the start of a new session with Claude to restore project context quickly.*
