@@ -145,12 +145,15 @@ def submit():
 def admin_phrases():
     conn = get_db()
     cursor = conn.cursor()
+
+    # Phrase queue data
     cursor.execute("""
         SELECT * FROM phrases
         WHERE status = 'pending'
         ORDER BY submission_timestamp
     """)
     phrases = cursor.fetchall()
+
     cursor.execute("""
         SELECT h.hexagram_id, h.number, h.name_english,
                COUNT(p.phrase_id) as phrase_count
@@ -161,67 +164,38 @@ def admin_phrases():
         LIMIT 10
     """)
     hexagrams = cursor.fetchall()
+
     cursor.execute("""
         SELECT h.hexagram_id, h.number, h.name_english, h.judgment_text
         FROM hexagrams h
         ORDER BY h.number
     """)
     all_hexagrams = cursor.fetchall()
+
     cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
     remaining = cursor.fetchone()['total']
+
     cursor.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'approved'")
     total_approved = cursor.fetchone()['total']
+
+    # Rocky Core entries
+    cursor.execute("""
+        SELECT id, entry_type, content, significance, created_at
+        FROM rocky_core_entries
+        ORDER BY created_at DESC
+    """)
+    core_entries = cursor.fetchall()
+
     conn.close()
-    return render_template_string('''
-        <h1>Curation Queue</h1>
-        <p>Total phrases in pool: <strong>{{ total_approved }}</strong></p>
-        {% if request.args.get('error') %}
-        <p style="color:red; font-weight:bold;">Please assign a hexagram before approving.</p>
-        {% endif %}   
-<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
-    <tr>
-        <th style="text-align:left; padding:4px 8px; border-bottom:1px solid #ccc;">№</th>
-        <th style="text-align:left; padding:4px 8px; border-bottom:1px solid #ccc;">Name</th>
-        <th style="text-align:right; padding:4px 8px; border-bottom:1px solid #ccc;">Phrases</th>
-    </tr>
-    {% for h in hexagrams %}
-    <tr style="background: {% if h['phrase_count'] < 3 %}#fff3cd{% elif h['phrase_count'] < 6 %}#fff{% else %}#f0fff0{% endif %}">
-        <td style="padding:3px 8px;">{{ h['number'] }}</td>
-        <td style="padding:3px 8px;">{{ h['name_english'] }}</td>
-        <td style="padding:3px 8px; text-align:right;">{{ h['phrase_count'] }}</td>
-    </tr>
-    {% endfor %}
-</table>
-<a name="queue"></a>
-        {% for p in phrases %}
-        <form method="POST" action="/admin/curate"
-            style="border:1px solid #ccc; margin:10px 0; padding:12px;">
-            <input type="hidden" name="phrase_id" value="{{ p.phrase_id }}">
-            <input type="hidden" name="redirect_to" value="/admin/phrases">
-            <div style="margin-bottom:10px;">
-                <textarea name="edited_text" rows="2" cols="60"
-                    style="font-size:14px;">{{ p.raw_text }}</textarea>
-            </div>
-            <div style="margin-bottom:10px;">
-                <select name="hexagram_id" style="font-size:14px; padding:4px;">
-                    <option value="">-- Assign hexagram --</option>
-                    {% for h in all_hexagrams %}
-                    <option value="{{ h.hexagram_id }}">
-                        {{ h.number }} — {{ h.name_english }}: {{ h['judgment_text'][:50] }}...
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <button type="submit" name="action" value="approve"
-                style="padding:8px 20px; margin-right:8px;">Approve</button>
-            <button type="submit" name="action" value="reject"
-                style="padding:8px 20px;">Reject</button>
-        </form>
-        {% endfor %}
-        {% if not phrases %}
-            <p>The queue is empty.</p>
-        {% endif %}
-    ''', phrases=phrases, hexagrams=hexagrams, all_hexagrams=all_hexagrams, remaining=remaining, total_approved=total_approved)
+
+    return render_template('admin.html',
+        phrases=phrases,
+        hexagrams=hexagrams,
+        all_hexagrams=all_hexagrams,
+        remaining=remaining,
+        total_approved=total_approved,
+        core_entries=core_entries
+    )
 @app.route('/admin/mobile')
 @require_auth
 def admin_mobile():
@@ -280,6 +254,47 @@ def curate():
     conn.close()
 
     return redirect(redirect_to + '#queue')
+
+@app.route('/admin/rocky-core/add', methods=['POST'])
+@require_auth
+def rocky_core_add():
+    data = request.json
+    content     = (data.get('content') or '').strip()
+    entry_type  = data.get('entry_type', 'story')
+    significance = int(data.get('significance', 1))
+
+    if not content:
+        return jsonify({'success': False, 'error': 'Content is required.'}), 400
+
+    if entry_type not in ('story', 'opinion', 'fact', 'testimonial'):
+        return jsonify({'success': False, 'error': 'Invalid entry type.'}), 400
+
+    if significance not in (1, 2, 3):
+        significance = 1
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO rocky_core_entries (entry_type, content, significance)
+        VALUES (%s, %s, %s)
+        RETURNING id, entry_type, content, significance, created_at
+    """, (entry_type, content, significance))
+    row = cursor.fetchone()
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'success': True,
+        'entry': {
+            'id':          row['id'],
+            'entry_type':  row['entry_type'],
+            'content':     row['content'],
+            'significance': row['significance'],
+            'created_at':  row['created_at'].strftime('%b %d, %Y')
+        }
+    })
+
+
 @app.route('/distill', methods=['POST'])
 def distill():
     lines = request.json.get('lines', [])
