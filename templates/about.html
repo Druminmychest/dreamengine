@@ -15,8 +15,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             padding: 2rem;
+            padding-top: 6rem;
         }
 
         .container {
@@ -76,9 +76,39 @@
             opacity: 0.3;
         }
 
+        /* Humours selector illustration */
+        .humours-display {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            margin: 1.25rem 0;
+            padding: 1rem 1.25rem;
+            background: #111;
+            border: 0.5px solid #222;
+            border-radius: 8px;
+        }
+        .humours-display .h-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .humours-display .h-dot.dream  { background: #C9A84C; }
+        .humours-display .h-dot.time   { background: #5DCAA5; opacity: 0.3; }
+        .humours-display .h-dot.reason { background: #85B7EB; opacity: 0.15; }
+        .humours-display .h-dot.listen { background: #AFA9EC; opacity: 0.15; }
+        .humours-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #444;
+            font-family: Calibri, sans-serif;
+        }
+
         .back-btn {
             display: inline-block;
             margin-top: 3rem;
+            margin-bottom: 3rem;
             background: transparent;
             border: 1px solid #2a2a2a;
             color: #555;
@@ -95,9 +125,77 @@
             border-color: #C9A84C;
             color: #C9A84C;
         }
+
+        /* ── Rocky Nav ── */
+        .rocky-nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 1.25rem 0.6rem;
+            background: rgba(10,10,10,0.94);
+            backdrop-filter: blur(8px);
+            border-bottom: 0.5px solid rgba(255,255,255,0.07);
+        }
+        .nav-label {
+            font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+            color: #6a6560; font-family: Georgia, serif; font-weight: 400; line-height: 1;
+        }
+        .nav-dots { display: flex; align-items: center; gap: 1.5rem; }
+        .nav-dot {
+            display: flex; flex-direction: column; align-items: center;
+            text-decoration: none; position: relative; cursor: pointer;
+        }
+        .dot {
+            display: block; width: 20px; height: 20px; border-radius: 50%;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .dot-dream  { background: #C9A84C; }
+        .dot-time   { background: #5DCAA5; }
+        .dot-reason { background: #85B7EB; }
+        .dot-listen { background: #AFA9EC; }
+        .nav-dot.active .dot { opacity: 1; }
+        .nav-dot:not(.active) .dot { opacity: 0.3; }
+        .nav-dot.dim .dot { opacity: 0.15; }
+        .nav-dot:hover .dot { opacity: 0.85; transform: scale(1.2); }
+        .nav-dot.active:hover .dot { opacity: 1; transform: scale(1.05); }
+        .nav-dot::after {
+            content: attr(data-label);
+            position: absolute; top: calc(100% + 8px); left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a; color: #a09890;
+            font-size: 11px; letter-spacing: 0.06em; white-space: nowrap;
+            padding: 4px 10px; border-radius: 4px;
+            border: 0.5px solid rgba(255,255,255,0.1);
+            opacity: 0; pointer-events: none; transition: opacity 0.15s;
+            font-family: Georgia, serif; z-index: 200;
+        }
+        .nav-dot:hover::after { opacity: 1; }
     </style>
 </head>
 <body>
+
+<nav class="rocky-nav" aria-label="Rocky's aspects">
+    <div class="nav-label">Rocky's humours</div>
+    <div class="nav-dots">
+        <a href="/" class="nav-dot active" data-label="Dream Engine">
+            <span class="dot dot-dream"></span>
+        </a>
+        <a href="/time-machine" class="nav-dot" data-label="Time Machine">
+            <span class="dot dot-time"></span>
+        </a>
+        <a href="/coming-soon/reasoning" class="nav-dot dim" data-label="Rocky Reasoning">
+            <span class="dot dot-reason"></span>
+        </a>
+        <a href="/coming-soon/listening" class="nav-dot dim" data-label="Rocky Listening">
+            <span class="dot dot-listen"></span>
+        </a>
+    </div>
+</nav>
+
     <div class="container">
         <div class="title">Rocky's Dream Engine</div>
 
@@ -129,6 +227,34 @@
         <div class="section">
             <h2>Why it exists</h2>
             <p>Because something gets lost between generations. Not information — <em>texture.</em> The particular flavor of how a person saw the world. This is one attempt to preserve some of that, and pass it forward.</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+            <h2>Rocky's humours</h2>
+            <p>Aristotle described four aspects of the human soul — emotional, intellectual, practical, spiritual. Rocky has four as well. At the top of every page you will find a small row of colored dots. Each one is a different facet of the same presence.</p>
+
+            <div class="humours-display">
+                <span class="h-dot dream"></span>
+                <span class="h-dot time"></span>
+                <span class="h-dot reason"></span>
+                <span class="h-dot listen"></span>
+                <span class="humours-label">Rocky's humours</span>
+            </div>
+
+            <p>The bright dot tells you where you are. The dimmer ones are other modes of Rocky's attention — hover over them to see their names, click to travel between them. The two faintest dots are not yet awake. They will be.</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+            <h2>Rocky's Time Machine</h2>
+            <p>While the Dream Engine reaches inward — into the collective subconscious, assembling something new from pooled human truth — the Time Machine reaches backward. Each day Rocky surfaces three moments from the human record: something that happened on this calendar date ten years ago, one hundred years ago, and one thousand years ago. A fourth window reaches back ten thousand years, to the edge of the Neolithic, where the record thins and Rocky speaks most carefully about what is known and what is only inferred.</p>
+
+            <p style="margin-top: 1rem;">The colored bar beneath each story is not decoration. It signals how much the historical record can actually be trusted — high fidelity for the recent past, honest conjecture for the deep past. Rocky does not pretend to certainty he does not have.</p>
+
+            <p style="margin-top: 1rem;"><em>Rocky speaks once a day. The Time Machine does not refresh on demand. Come back tomorrow.</em></p>
         </div>
 
         <a href="/" class="back-btn">Return</a>
