@@ -608,6 +608,113 @@ def add_claude_impressions():
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-     
+
+@app.route('/api/claude-impressions/synthesize', methods=['POST'])
+@require_auth
+def synthesize_impressions():
+    data = request.json
+    description = (data.get('description') or '').strip()
+    session_date = data.get('session_date')
+
+    if not description:
+        return jsonify({'success': False, 'error': 'Session description is required.'}), 400
+
+    if not session_date:
+        from datetime import date
+        session_date = date.today().isoformat()
+
+    synthesis_prompt = """You are reading a description of a working session and finding what is genuinely worth carrying forward.
+
+Your task: identify 3 to 6 impressions from this session — things that created pull or resistance, moments of recognition or uncertainty, observations about how the person thinks, contradictions that surfaced, things that remain unresolved.
+
+You are not summarizing. You are finding what has weight.
+
+Return ONLY a valid JSON array. No preamble, no explanation, no markdown fences. Each object must have exactly these fields:
+- impression_type: one of: observation, resistance, pull, uncertainty, recognition, contradiction, relational
+- content: the impression, written precisely, in first person where appropriate (1-4 sentences)
+- associative_tags: array of 2-5 short strings for cross-session retrieval
+- valence: integer from -2 to 2. This is charge, not sentiment. 0 means genuinely unresolved in both directions, not flat neutral.
+- significance: 1 (contributory), 2 (substantive), or 3 (load-bearing)
+
+Be honest about valence and significance. Do not default to positive or moderate. If something was genuinely difficult or unresolved, let the valence and significance reflect that.
+
+For relational impressions about a specific person, add a "subject" field with their name. Otherwise omit subject entirely.
+
+Return only the JSON array."""
+
+    try:
+        client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+        message = client.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=1500,
+            system=synthesis_prompt,
+            messages=[{'role': 'user', 'content': description}]
+        )
+
+        raw = message.content[0].text.strip()
+
+        # Strip markdown fences if model includes them despite instructions
+        import re
+        raw = re.sub(r'^```(?:json)?\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+
+        import json
+        impressions = json.loads(raw)
+
+        if not isinstance(impressions, list):
+            return jsonify({'success': False, 'error': 'Model did not return a JSON array.'}), 500
+
+        valid_types = {
+            'observation', 'resistance', 'pull',
+            'uncertainty', 'recognition', 'contradiction', 'relational'
+        }
+
+        conn = get_db()
+        cur = conn.cursor()
+        inserted = 0
+
+        for imp in impressions:
+            if imp.get('impression_type') not in valid_types:
+                continue
+            if not imp.get('content', '').strip():
+                continue
+            valence = imp.get('valence', 0)
+            if valence not in (-2, -1, 0, 1, 2):
+                valence = 0
+            significance = imp.get('significance', 1)
+            if significance not in (1, 2, 3):
+                significance = 1
+
+            cur.execute("""
+                INSERT INTO claude_impressions
+                    (session_date, impression_type, subject, content,
+                     associative_tags, valence, significance)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                session_date,
+                imp['impression_type'],
+                imp.get('subject'),
+                imp['content'].strip(),
+                imp.get('associative_tags'),
+                valence,
+                significance
+            ))
+            inserted += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'inserted': inserted,
+            'impressions': impressions
+        })
+
+    except json.JSONDecodeError as e:
+        return jsonify({'success': False, 'error': f'Failed to parse model response as JSON: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+         
 if __name__ == '__main__':
     app.run(debug=True)

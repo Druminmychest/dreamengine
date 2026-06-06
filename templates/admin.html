@@ -405,6 +405,47 @@
             margin-bottom: 0.75rem;
             min-height: 1.2em;
         }
+
+        /* Impression result cards */
+        .impression-card {
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            padding: 1rem 1.2rem;
+            margin-bottom: 0.6rem;
+            background: #0c0c0c;
+        }
+
+        .impression-text {
+            font-size: 0.95rem;
+            line-height: 1.65;
+            color: #ccc;
+            margin-bottom: 0.5rem;
+        }
+
+        .impression-meta {
+            font-family: Calibri, sans-serif;
+            font-size: 0.75rem;
+            color: #3a3a3a;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .imp-type-badge {
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.65rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 2px;
+            border: 1px solid #2a2a2a;
+            color: #5DCAA5;
+            border-color: #5DCAA522;
+        }
+
+        .imp-valence {
+            font-size: 0.7rem;
+            color: #444;
+        }
     </style>
 </head>
 <body>
@@ -418,6 +459,7 @@
     <div class="tabs">
         <div class="tab active" data-tab="queue">Phrase Queue</div>
         <div class="tab" data-tab="rocky-core">Rocky Core</div>
+        <div class="tab" data-tab="impressions">Close Session</div>
     </div>
 
     <!-- ═══════════════════════════════════════
@@ -555,6 +597,42 @@
         </div>
 
     </div><!-- /panel-rocky-core -->
+
+
+    <!-- ═══════════════════════════════════════
+         PANEL 3 — CLOSE SESSION
+    ════════════════════════════════════════ -->
+    <div class="panel" id="panel-impressions">
+
+        <div class="core-form">
+            <div class="success-flash" id="impressions-flash"></div>
+            <textarea id="impressions-content" placeholder="Describe what happened this session — what you worked on, what felt significant, what created friction, what surprised you, what remains unresolved. Plain language. Rocky will find what to carry forward." rows="8"></textarea>
+            <div class="core-form-controls" style="margin-top: 0.8rem;">
+                <div>
+                    <label>SESSION DATE&nbsp;&nbsp;</label>
+                    <input type="date" id="impressions-date" style="
+                        background: #0E0E0E;
+                        border: 1px solid #2a2a2a;
+                        border-radius: 4px;
+                        color: #F5F2EC;
+                        font-family: Calibri, sans-serif;
+                        font-size: 0.9rem;
+                        padding: 0.55rem 0.8rem;
+                        outline: none;
+                    ">
+                </div>
+                <button class="btn btn-gold" id="impressions-submit" style="margin-left:auto;">Close Session</button>
+            </div>
+        </div>
+
+        <div id="impressions-result" style="display:none;">
+            <div class="entries-header">
+                <h3>Impressions Written</h3>
+            </div>
+            <div id="impressions-list"></div>
+        </div>
+
+    </div><!-- /panel-impressions -->
 
 
     <script>
@@ -716,6 +794,76 @@
     // Init pagination on load
     applyFilter('all');
     rebuildPagination();
+    // ── Close Session: set default date to today ──
+    (function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('impressions-date').value = today;
+    })();
+
+    // ── Close Session: submit ──
+    document.getElementById('impressions-submit').addEventListener('click', async () => {
+        const content = document.getElementById('impressions-content').value.trim();
+        const sessionDate = document.getElementById('impressions-date').value;
+        const flash = document.getElementById('impressions-flash');
+        const btn = document.getElementById('impressions-submit');
+
+        if (!content) {
+            flash.style.color = '#c0392b';
+            flash.textContent = 'Describe the session first.';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Synthesizing…';
+        flash.style.color = '#5DCAA5';
+        flash.textContent = 'Rocky is finding what to carry forward…';
+
+        try {
+            const res = await fetch('/api/claude-impressions/synthesize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: content, session_date: sessionDate })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                flash.textContent = `${data.inserted} impression${data.inserted !== 1 ? 's' : ''} written.`;
+                document.getElementById('impressions-content').value = '';
+
+                // Render result cards
+                const list = document.getElementById('impressions-list');
+                list.innerHTML = '';
+                data.impressions.forEach(imp => {
+                    const card = document.createElement('div');
+                    card.className = 'impression-card';
+                    const valenceLabel = imp.valence > 0 ? `+${imp.valence}` : `${imp.valence}`;
+                    const sigDots = [1,2,3].map(n =>
+                        `<div class="sig-dot ${imp.significance >= n ? 'lit' : ''}"></div>`
+                    ).join('');
+                    card.innerHTML = `
+                        <div class="impression-text">${escHtml(imp.content)}</div>
+                        <div class="impression-meta">
+                            <span class="imp-type-badge">${imp.impression_type}</span>
+                            <span class="imp-valence">valence ${valenceLabel}</span>
+                            <div class="sig-dots" style="margin-left:auto;">${sigDots}</div>
+                        </div>
+                    `;
+                    list.appendChild(card);
+                });
+                document.getElementById('impressions-result').style.display = 'block';
+            } else {
+                flash.style.color = '#c0392b';
+                flash.textContent = data.error || 'Something went wrong.';
+            }
+        } catch (err) {
+            flash.style.color = '#c0392b';
+            flash.textContent = 'Network error.';
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Close Session';
+    });
+
     </script>
 
 </body>
