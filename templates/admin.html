@@ -446,6 +446,104 @@
             font-size: 0.7rem;
             color: #444;
         }
+        /* ── Open Session panel ── */
+        .stat-row {
+            display: flex;
+            gap: 2.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 0;
+        }
+
+        .stat {
+            font-family: Calibri, sans-serif;
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .stat strong {
+            color: #F5F2EC;
+            font-weight: normal;
+            display: block;
+            font-size: 1.3rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .brief-section-label {
+            font-family: Calibri, sans-serif;
+            font-size: 0.7rem;
+            color: #333;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin: 1.4rem 0 0.6rem;
+        }
+
+        .brief-section-label:first-child { margin-top: 0; }
+
+        .impression-item {
+            padding: 0.9rem 0;
+            border-bottom: 1px solid #151515;
+        }
+
+        .impression-item:last-child { border-bottom: none; }
+
+        .imp-type-label {
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 2px;
+            border: 1px solid #5DCAA522;
+            color: #5DCAA5;
+        }
+
+        .imp-type-label.relational {
+            border-color: #AFA9EC22;
+            color: #AFA9EC;
+        }
+
+        .imp-valence-label { color: #3a3a3a; }
+        .imp-tags-label { color: #2a2a2a; font-size: 0.68rem; }
+
+        .raw-brief {
+            width: 100%;
+            background: #050505;
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            color: #555;
+            font-family: 'Courier New', monospace;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            padding: 1rem;
+            resize: vertical;
+            outline: none;
+            min-height: 180px;
+            margin-top: 1rem;
+        }
+
+        .copy-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 0.75rem;
+        }
+
+        .copy-flash {
+            font-family: Calibri, sans-serif;
+            font-size: 0.8rem;
+            color: #5DCAA5;
+            min-height: 1.2em;
+            flex: 1;
+        }
+
+        .btn-teal {
+            border: 1px solid #5DCAA5;
+            color: #5DCAA5;
+        }
+
+        .btn-teal:hover {
+            background: #5DCAA5;
+            color: #0A0A0A;
+        }
     </style>
 </head>
 <body>
@@ -459,6 +557,7 @@
     <div class="tabs">
         <div class="tab active" data-tab="queue">Phrase Queue</div>
         <div class="tab" data-tab="rocky-core">Rocky Core</div>
+        <div class="tab" data-tab="open-session">Open Session</div>
         <div class="tab" data-tab="impressions">Close Session</div>
     </div>
 
@@ -600,7 +699,48 @@
 
 
     <!-- ═══════════════════════════════════════
-         PANEL 3 — CLOSE SESSION
+         PANEL 3 — OPEN SESSION
+    ════════════════════════════════════════ -->
+    <div class="panel" id="panel-open-session">
+
+        <div class="core-form">
+            <div class="success-flash" id="open-flash"></div>
+            <textarea id="open-intent" placeholder="What are we here to do today? Which project, or just a conversation. Plain language." rows="3"></textarea>
+            <div class="core-form-controls" style="margin-top:0.8rem;">
+                <button class="btn btn-gold" id="open-submit" style="margin-left:auto;">Generate Brief</button>
+            </div>
+        </div>
+
+        <div id="open-output" style="display:none;">
+
+            <div class="core-form">
+                <div class="brief-section-label">Project State</div>
+                <div class="stat-row" id="open-stats"></div>
+            </div>
+
+            <div class="core-form">
+                <div class="brief-section-label">What I'm Carrying — Recent</div>
+                <div id="open-recent"></div>
+                <div class="brief-section-label" id="open-depth-label">Reaching Back</div>
+                <div id="open-depth"></div>
+            </div>
+
+            <div class="core-form">
+                <div class="brief-section-label">Copy to Claude</div>
+                <textarea class="raw-brief" id="open-raw" readonly></textarea>
+                <div class="copy-row">
+                    <div class="copy-flash" id="open-copy-flash"></div>
+                    <button class="btn btn-teal" id="open-copy-btn">Copy Brief</button>
+                </div>
+            </div>
+
+        </div>
+
+    </div><!-- /panel-open-session -->
+
+
+    <!-- ═══════════════════════════════════════
+         PANEL 4 — CLOSE SESSION
     ════════════════════════════════════════ -->
     <div class="panel" id="panel-impressions">
 
@@ -794,6 +934,145 @@
     // Init pagination on load
     applyFilter('all');
     rebuildPagination();
+    // ── Open Session ──
+    document.getElementById('open-submit').addEventListener('click', async () => {
+        const intent = document.getElementById('open-intent').value.trim();
+        const flash  = document.getElementById('open-flash');
+        const btn    = document.getElementById('open-submit');
+
+        if (!intent) {
+            flash.style.color = '#c0392b';
+            flash.textContent = 'Write the session intent first.';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Generating…';
+        flash.style.color = '#5DCAA5';
+        flash.textContent = 'Fetching impressions and project state…';
+
+        try {
+            const [impRes, statsRes] = await Promise.all([
+                fetch('/api/claude-impressions'),
+                fetch('/api/project-stats')
+            ]);
+            const impData   = await impRes.json();
+            const statsData = await statsRes.json();
+
+            // Stats
+            document.getElementById('open-stats').innerHTML = `
+                <div class="stat"><strong>${statsData.dream_pool}</strong>Dream Pool</div>
+                <div class="stat"><strong>${statsData.pending}</strong>Pending</div>
+                <div class="stat"><strong>${statsData.rocky_core}</strong>Rocky Core</div>
+                <div class="stat"><strong>${statsData.impressions_total}</strong>Impressions</div>
+            `;
+
+            // Impressions
+            renderOpenImpressions('open-recent', impData.recent || []);
+            renderOpenImpressions('open-depth',  impData.depth  || []);
+            document.getElementById('open-depth-label').style.display =
+                (impData.depth && impData.depth.length) ? '' : 'none';
+
+            // Raw brief
+            document.getElementById('open-raw').value =
+                buildOpenBrief(intent, impData, statsData);
+
+            flash.textContent = '';
+            document.getElementById('open-output').style.display = 'block';
+
+        } catch (err) {
+            flash.style.color = '#c0392b';
+            flash.textContent = 'Failed to fetch data.';
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Generate Brief';
+    });
+
+    function renderOpenImpressions(containerId, impressions) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        if (!impressions.length) {
+            container.innerHTML = '<div style="color:#2a2a2a;font-size:0.85rem;font-style:italic;padding:0.5rem 0;">None.</div>';
+            return;
+        }
+        impressions.forEach(imp => {
+            const valenceLabel = imp.valence > 0 ? `+${imp.valence}` : `${imp.valence}`;
+            const sigDots = [1,2,3].map(n =>
+                `<div class="sig-dot ${imp.significance >= n ? 'lit' : ''}"></div>`
+            ).join('');
+            const typeClass = imp.impression_type === 'relational'
+                ? 'imp-type-label relational' : 'imp-type-label';
+            const tags = (imp.associative_tags || []).join(', ');
+            const div = document.createElement('div');
+            div.className = 'impression-item';
+            div.innerHTML = `
+                <div class="entry-text">${escHtml(imp.content)}</div>
+                <div class="entry-meta">
+                    <span class="${typeClass}">${imp.impression_type}</span>
+                    <span class="imp-valence-label">valence ${valenceLabel}</span>
+                    <span class="imp-tags-label">${escHtml(tags)}</span>
+                    <div class="sig-dots" style="margin-left:auto;">${sigDots}</div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function buildOpenBrief(intent, impData, stats) {
+        const date = new Date().toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        });
+        const lines = [];
+        lines.push(`ROCKY SESSION BRIEF — ${date}`);
+        lines.push('─'.repeat(48));
+        lines.push('');
+        lines.push('SESSION INTENT');
+        lines.push(intent);
+        lines.push('');
+        lines.push('PROJECT STATE');
+        lines.push(`Dream Pool: ${stats.dream_pool} phrases   Pending: ${stats.pending}`);
+        lines.push(`Rocky Core: ${stats.rocky_core} entries   Impressions stored: ${stats.impressions_total}`);
+        lines.push('');
+        lines.push('WHAT I AM CARRYING FORWARD');
+        lines.push('');
+
+        const all = [...(impData.recent || []), ...(impData.depth || [])];
+        const relational = all.filter(i => i.impression_type === 'relational');
+        const rest       = all.filter(i => i.impression_type !== 'relational');
+
+        if (relational.length) {
+            lines.push('Relational:');
+            relational.forEach(imp => {
+                const v = imp.valence > 0 ? `+${imp.valence}` : `${imp.valence}`;
+                lines.push(`  [RELATIONAL${imp.subject ? ' — ' + imp.subject : ''}] ${imp.content}`);
+                lines.push(`  valence ${v}  significance ${imp.significance}`);
+                lines.push('');
+            });
+        }
+
+        rest.forEach(imp => {
+            const v = imp.valence > 0 ? `+${imp.valence}` : `${imp.valence}`;
+            lines.push(`[${imp.impression_type.toUpperCase()}] ${imp.content}`);
+            lines.push(`valence ${v}  significance ${imp.significance}  tags: ${(imp.associative_tags || []).join(', ')}`);
+            lines.push('');
+        });
+
+        lines.push('─'.repeat(48));
+        lines.push('Generated from the Claude Impression Store.');
+        return lines.join('\n');
+    }
+
+    document.getElementById('open-copy-btn').addEventListener('click', () => {
+        const raw = document.getElementById('open-raw');
+        raw.select();
+        navigator.clipboard.writeText(raw.value).then(() => {
+            const flash = document.getElementById('open-copy-flash');
+            flash.textContent = 'Copied.';
+            setTimeout(() => { flash.textContent = ''; }, 2000);
+        });
+    });
+
     // ── Close Session: set default date to today ──
     (function() {
         const today = new Date().toISOString().split('T')[0];
