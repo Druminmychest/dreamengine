@@ -715,6 +715,44 @@ Return only the JSON array."""
         return jsonify({'success': False, 'error': f'Failed to parse model response as JSON: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-         
+
+@app.route('/admin/session-brief')
+@require_auth
+def session_brief():
+    return render_template('session_brief.html')
+
+
+@app.route('/api/project-stats')
+@require_auth
+def project_stats():
+    try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+        cur.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'approved'")
+        dream_pool = cur.fetchone()['total']
+
+        cur.execute("SELECT COUNT(*) as total FROM phrases WHERE status = 'pending'")
+        pending = cur.fetchone()['total']
+
+        cur.execute("SELECT COUNT(*) as total FROM rocky_core_entries")
+        rocky_core = cur.fetchone()['total']
+
+        cur.execute("SELECT COUNT(*) as total FROM claude_impressions")
+        impressions_total = cur.fetchone()['total']
+
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            'dream_pool': dream_pool,
+            'pending': pending,
+            'rocky_core': rocky_core,
+            'impressions_total': impressions_total
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
