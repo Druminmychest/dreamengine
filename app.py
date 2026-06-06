@@ -385,8 +385,9 @@ def time_machine():
 
 
 @app.route('/api/rocky', methods=['POST'])
+@app.route('/api/rocky', methods=['POST'])
 def rocky_api():
-    from datetime import date
+    from datetime import date, timedelta
     data          = request.json
     system_prompt = data.get('system', '')
     user_prompt   = data.get('prompt', '')
@@ -410,8 +411,8 @@ def rocky_api():
         conn.close()
 
         if row:
-            title      = row['title']
-            narrative  = row['narrative']
+            title         = row['title']
+            narrative     = row['narrative']
             context_pills = row['context_pills']
             return jsonify({
                 'cached': True,
@@ -423,6 +424,34 @@ def rocky_api():
     except Exception as e:
         # If cache check fails, fall through to API call
         pass
+
+    # ── Build exclusion list from recent cache ──
+    recent_titles = []
+    try:
+        lookback = today - timedelta(days=7)
+        conn = get_db()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(
+            """SELECT title FROM time_machine_cache
+               WHERE era = %s AND cache_date >= %s AND cache_date < %s
+               ORDER BY cache_date DESC""",
+            (era_id, lookback, today)
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        recent_titles = [r['title'] for r in rows if r['title']]
+    except Exception:
+        pass  # If this fails, proceed without exclusions — no harm done
+
+    if recent_titles:
+        exclusion_note = (
+            "\n\nImportant: In the past week you have already spoken about: "
+            + "; ".join(f'"{t}"' for t in recent_titles)
+            + ". Do not return to the same event, region, culture, or theme. "
+            "Find a genuinely different corner of the world or human experience."
+        )
+        user_prompt = user_prompt + exclusion_note
 
     # ── Cache miss — call Anthropic ──
     try:
