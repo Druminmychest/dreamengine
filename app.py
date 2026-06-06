@@ -484,6 +484,130 @@ def coming_soon(lobe):
     }
     lobe_data = lobes.get(lobe, lobes['reasoning'])
     return render_template('coming_soon.html', lobe=lobe_data)
- 
+
+# ── Claude Impression Store ──────────────────────────────────────────────────
+#
+# GET  /api/claude-impressions
+#   Returns a hybrid set of impressions for system prompt injection:
+#   - Last 3 by recency (continuity thread)
+#   - Up to 5 older entries, weighted toward higher significance (unexpected depth)
+#   Auth-protected.
+#
+# POST /api/claude-impressions/add
+#   Accepts a JSON array of impression objects. Validates and inserts.
+#   Auth-protected.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/claude-impressions', methods=['GET'])
+@require_auth
+def get_claude_impressions():
+    try:
+        conn = get_db()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+        # Recency thread — last 3 impressions
+        cur.execute("""
+            SELECT id, session_date, impression_type, subject, content,
+                   associative_tags, valence, significance, created_at
+            FROM claude_impressions
+            ORDER BY created_at DESC
+            LIMIT 3
+        """)
+        recent = [dict(row) for row in cur.fetchall()]
+        recent_ids = [r['id'] for r in recent]
+
+        # Depth reach — up to 5 older entries, significance-weighted
+        # Excludes IDs already in recency set
+        exclusion = tuple(recent_ids) if recent_ids else (0,)
+        cur.execute("""
+            SELECT id, session_date, impression_type, subject, content,
+                   associative_tags, valence, significance, created_at
+            FROM claude_impressions
+            WHERE id NOT IN %s
+            ORDER BY (significance * random()) DESC
+            LIMIT 5
+        """, (exclusion,))
+        depth = [dict(row) for row in cur.fetchall()]
+
+        cur.close()
+        conn.close()
+
+        # Serialize dates for JSON
+        def serialize(entry):
+            entry['session_date'] = entry['session_date'].isoformat()
+            entry['created_at']   = entry['created_at'].isoformat()
+            return entry
+
+        return jsonify({
+            'recent': [serialize(e) for e in recent],
+            'depth':  [serialize(e) for e in depth]
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/claude-impressions/add', methods=['POST'])
+@require_auth
+def add_claude_impressions():
+    valid_types = {
+        'observation', 'resistance', 'pull',
+        'uncertainty', 'recognition', 'contradiction', 'relational'
+    }
+
+    data = request.json
+    if not isinstance(data, list):
+        return jsonify({'success': False, 'error': 'Expected a JSON array of impression objects.'}), 400
+
+    if not data:
+        return jsonify({'success': False, 'error': 'Array is empty.'}), 400
+
+    errors = []
+    for i, imp in enumerate(data):
+        if imp.get('impression_type') not in valid_types:
+            errors.append(f"Entry {i}: invalid impression_type '{imp.get('impression_type')}'")
+        if not imp.get('content', '').strip():
+            errors.append(f"Entry {i}: content is required")
+        valence = imp.get('valence')
+        if valence is not None and valence not in (-2, -1, 0, 1, 2):
+            errors.append(f"Entry {i}: valence must be -2 to 2")
+        significance = imp.get('significance', 1)
+        if significance not in (1, 2, 3):
+            errors.append(f"Entry {i}: significance must be 1, 2, or 3")
+
+    if errors:
+        return jsonify({'success': False, 'errors': errors}), 400
+
+    try:
+        conn = get_db()
+        cur  = conn.cursor()
+        inserted = 0
+
+        for imp in data:
+            cur.execute("""
+                INSERT INTO claude_impressions
+                    (session_date, impression_type, subject, content,
+                     associative_tags, valence, significance)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                imp.get('session_date'),
+                imp['impression_type'],
+                imp.get('subject'),
+                imp['content'].strip(),
+                imp.get('associative_tags'),
+                imp.get('valence'),
+                imp.get('significance', 1)
+            ))
+            inserted += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({'success': True, 'inserted': inserted})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+     
 if __name__ == '__main__':
     app.run(debug=True)
