@@ -4,6 +4,8 @@ import psycopg2.extras
 import random
 import uuid
 import os
+import re
+import json
 import anthropic
 from functools import wraps
 
@@ -196,6 +198,7 @@ def admin_phrases():
         total_approved=total_approved,
         core_entries=core_entries
     )
+
 @app.route('/admin/mobile')
 @require_auth
 def admin_mobile():
@@ -259,8 +262,8 @@ def curate():
 @require_auth
 def rocky_core_add():
     data = request.json
-    content     = (data.get('content') or '').strip()
-    entry_type  = data.get('entry_type', 'story')
+    content      = (data.get('content') or '').strip()
+    entry_type   = data.get('entry_type', 'story')
     significance = int(data.get('significance', 1))
 
     if not content:
@@ -286,11 +289,11 @@ def rocky_core_add():
     return jsonify({
         'success': True,
         'entry': {
-            'id':          row['id'],
-            'entry_type':  row['entry_type'],
-            'content':     row['content'],
+            'id':           row['id'],
+            'entry_type':   row['entry_type'],
+            'content':      row['content'],
             'significance': row['significance'],
-            'created_at':  row['created_at'].strftime('%b %d, %Y')
+            'created_at':   row['created_at'].strftime('%b %d, %Y')
         }
     })
 
@@ -385,7 +388,6 @@ def time_machine():
 
 
 @app.route('/api/rocky', methods=['POST'])
-@app.route('/api/rocky', methods=['POST'])
 def rocky_api():
     from datetime import date, timedelta
     data          = request.json
@@ -411,19 +413,15 @@ def rocky_api():
         conn.close()
 
         if row:
-            title         = row['title']
-            narrative     = row['narrative']
-            context_pills = row['context_pills']
             return jsonify({
                 'cached': True,
-                'title': title,
-                'narrative': narrative,
-                'context_pills': context_pills
+                'title':         row['title'],
+                'narrative':     row['narrative'],
+                'context_pills': row['context_pills']
             })
 
-    except Exception as e:
-        # If cache check fails, fall through to API call
-        pass
+    except Exception:
+        pass  # If cache check fails, fall through to generation
 
     # ── Build exclusion list from recent cache ──
     recent_titles = []
@@ -453,19 +451,102 @@ def rocky_api():
         )
         user_prompt = user_prompt + exclusion_note
 
-    # ── Cache miss — call Anthropic ──
+    # ── Fetch Rocky Core entries and select via semantic pre-call ──
+    #
+    # Pull all Rocky Core entries, ordered by significance descending.
+    # Pass them to a lightweight pre-call that selects the 4-6 entries
+    # whose texture feels most resonant with the target era. Selected
+    # entries are injected into the system prompt as sediment — not
+    # instructions, but the actual texture of the man behind the voice.
+    # Pre-call failure is non-fatal: falls back to base system prompt.
+    #
+    enriched_system = system_prompt
+    try:
+        conn = get_db()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute("""
+            SELECT id, entry_type, content, significance
+            FROM rocky_core_entries
+            ORDER BY significance DESC
+        """)
+        core_rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if core_rows:
+            # Format entries for the pre-call selection prompt
+            numbered = "\n\n".join(
+                f"[{i}] ({row['entry_type'].upper()}, significance {row['significance']})\n{row['content']}"
+                for i, row in enumerate(core_rows)
+            )
+
+            era_descriptions = {
+                '10yr':    'approximately 10 years in the past — recent memory, human scale, events some people still remember',
+                '100yr':   'approximately 100 years in the past — grandparental distance, just beyond living memory',
+                '1000yr':  'approximately 1,000 years in the past — civilization scale, the long sweep of history',
+                '10000yr': 'approximately 10,000 years in the past — deep time, pre-history, the edge of what can be known'
+            }
+            era_desc = era_descriptions.get(era_id, era_id)
+
+            selection_prompt = f"""You are selecting entries from a collection of true stories, opinions, facts, and testimonials about a man named Rocky — a Marine, a blacksmith, a knight, a mentor, irascible and deeply kind.
+
+The Time Machine is about to generate a narrative set {era_desc}.
+
+Here are the Rocky Core entries, numbered:
+
+{numbered}
+
+Select the 4 to 6 entries whose texture feels most resonant with that temporal distance and human scale. Consider: what did Rocky know about loyalty, craft, endurance, humor in hard places, the weight of time? Which entries carry something that belongs in this era's story?
+
+Return ONLY a JSON array of the selected index numbers. Example: [0, 3, 7, 12]
+No explanation. No preamble. Only the array."""
+
+            client = anthropic.Anthropic()
+            pre_call = client.messages.create(
+                model='claude-sonnet-4-6',
+                max_tokens=100,
+                messages=[{'role': 'user', 'content': selection_prompt}]
+            )
+            raw_indices = pre_call.content[0].text.strip()
+            raw_indices = re.sub(r'^```(?:json)?\s*', '', raw_indices)
+            raw_indices = re.sub(r'\s*```$', '', raw_indices)
+            selected_indices = json.loads(raw_indices)
+
+            selected_entries = [
+                core_rows[i] for i in selected_indices
+                if isinstance(i, int) and 0 <= i < len(core_rows)
+            ]
+
+            if selected_entries:
+                core_block = "\n\n".join(
+                    f"({row['entry_type'].upper()}) {row['content']}"
+                    for row in selected_entries
+                )
+                enriched_system = system_prompt + (
+                    "\n\n---\n\nBefore you speak, here are true things about Rocky — "
+                    "the man whose voice you carry. These are not instructions. They are sediment. "
+                    "Let them settle into how you see and what you notice, without quoting them "
+                    "or referencing them directly.\n\n"
+                    + core_block
+                )
+
+    except Exception as e:
+        # Pre-call failure is non-fatal — fall back to base system prompt
+        print(f"ROCKY CORE PRE-CALL ERROR: {e}")
+        enriched_system = system_prompt
+
+    # ── Cache miss — call Anthropic for generation ──
     try:
         client  = anthropic.Anthropic()
         message = client.messages.create(
             model='claude-sonnet-4-6',
             max_tokens=600,
-            system=system_prompt,
+            system=enriched_system,
             messages=[{'role': 'user', 'content': user_prompt}]
         )
         text = message.content[0].text
 
-        # ── Parse and store in cache ──
-        import re
+        # ── Parse response ──
         title_match     = re.search(r'TITLE:\s*(.+)', text, re.IGNORECASE)
         narrative_match = re.search(r'NARRATIVE:\s*([\s\S]+?)(?=\nCONTEXT:|CONTEXT:|$)', text, re.IGNORECASE)
         context_match   = re.search(r'CONTEXT:\s*(.+)', text, re.IGNORECASE)
@@ -474,6 +555,7 @@ def rocky_api():
         narrative     = narrative_match.group(1).strip() if narrative_match else text
         context_pills = context_match.group(1).strip()   if context_match   else ''
 
+        # ── Store in cache ──
         try:
             conn = get_db()
             cur  = conn.cursor()
@@ -642,7 +724,7 @@ def add_claude_impressions():
 @require_auth
 def synthesize_impressions():
     data = request.json
-    description = (data.get('description') or '').strip()
+    description  = (data.get('description') or '').strip()
     session_date = data.get('session_date')
 
     if not description:
@@ -683,11 +765,9 @@ Return only the JSON array."""
         raw = message.content[0].text.strip()
 
         # Strip markdown fences if model includes them despite instructions
-        import re
         raw = re.sub(r'^```(?:json)?\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
 
-        import json
         impressions = json.loads(raw)
 
         if not isinstance(impressions, list):
@@ -774,9 +854,9 @@ def project_stats():
         conn.close()
 
         return jsonify({
-            'dream_pool': dream_pool,
-            'pending': pending,
-            'rocky_core': rocky_core,
+            'dream_pool':       dream_pool,
+            'pending':          pending,
+            'rocky_core':       rocky_core,
             'impressions_total': impressions_total
         })
 
