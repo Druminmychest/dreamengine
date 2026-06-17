@@ -689,17 +689,20 @@
                 <button class="filter-btn" data-filter="opinion">Opinions</button>
                 <button class="filter-btn" data-filter="fact">Facts</button>
                 <button class="filter-btn" data-filter="testimonial">Testimonials</button>
+                <button class="filter-btn" data-filter="tall tale">Tall Tales</button>
+                <button class="filter-btn" data-filter="renown" style="color:#C0392B; border-color:#C0392B44;">Renown</button>
             </div>
         </div>
 
         <div id="entries-container">
             {% if core_entries %}
                 {% for e in core_entries %}
-                <div class="entry-card" data-type="{{ e.entry_type }}" data-id="{{ e.id }}">
+                <div class="entry-card" data-type="{{ e.entry_type }}" data-source="{{ e.source }}" data-id="{{ e.id }}">
                     <div class="entry-body">
                         <div class="entry-text">{{ e.content }}</div>
                         <div class="entry-meta">
-                            <span class="entry-type-badge badge-{{ e.entry_type }}">{{ e.entry_type }}</span>
+                            <span class="entry-type-badge badge-{{ e.entry_type | replace(' ', '-') }}">{{ e.entry_type }}</span>
+                            {% if e.source == 'renown' %}<span style="color:#C0392B; font-size:0.65rem; letter-spacing:0.08em; text-transform:uppercase;">renown</span>{% endif %}
                             <span>{{ e.created_at.strftime('%b %d, %Y') }}</span>
                         </div>
                     </div>
@@ -1044,9 +1047,10 @@
 
     function applyFilter(filter) {
         const cards = document.querySelectorAll('#entries-container .entry-card');
-        let visible = 0;
-        cards.forEach((card, idx) => {
-            const matchesFilter = filter === 'all' || card.dataset.type === filter;
+        cards.forEach(card => {
+            const matchesFilter = filter === 'all'
+                || (filter === 'renown' && card.dataset.source === 'renown')
+                || (filter !== 'renown' && card.dataset.type === filter);
             card.classList.toggle('hidden', !matchesFilter);
         });
         paginateVisible();

@@ -182,7 +182,7 @@ def admin_phrases():
 
     # Rocky Core entries
     cursor.execute("""
-        SELECT id, entry_type, content, significance, created_at
+        SELECT id, entry_type, content, significance, source, created_at
         FROM rocky_core_entries
         ORDER BY created_at DESC
     """)
