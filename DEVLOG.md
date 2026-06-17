@@ -255,63 +255,63 @@ The tagline: *"Every day is the echo of ten thousand days before it."*
 
 ---
 
-## June 6, 2026
+## June 17, 2026
 
-### Time Machine — repetition fix deployed
+### Rocky's Renown — COMPLETE and deployed
 
-**Problem:** Rocky was returning events from the same region repeatedly (three consecutive days of Chinese river narratives). The API has strong priors and nothing was steering it away from recently covered territory.
-
-**Fix:** Added a 7-day exclusion list to `rocky_api()` in `app.py`. On a cache miss, the route now queries the last 7 days of cached titles for that era and appends them to the user prompt before calling Anthropic:
-
-> *"In the past week you have already spoken about: [title], [title], [title]. Do not return to the same event, region, culture, or theme. Find a genuinely different corner of the world or human experience."*
-
-**Implementation notes:**
-- Exclusion query runs between cache check and API call
-- Wrapped in its own try/except — degrades gracefully if query fails, prompt goes out unchanged
-- No schema changes — uses existing `time_machine_cache` table
-- `from datetime import date` updated to `from datetime import date, timedelta`
-- Lookback window: 7 days (adjustable)
-- Effectiveness builds over time as cache history accumulates — day one has nothing to exclude, day seven is steering away from a full week of prior choices
-
-**Status:** Deployed. Monitoring over coming days.
-
----
-
-## June 9, 2026
-
-### Rocky Core → Time Machine injection — COMPLETE and deployed
+**Concept:**
+- Replaced Rocky Reasoning (Lobe 3) with Rocky's Renown — a public submission interface where anyone can add stories, opinions, facts, testimonials, or tall tales to Rocky's legend
+- Philosophical grounding: Renown in the chivalric tradition is externally conferred — honor given, not internally generated. The lobe opens Rocky's Core outward, letting the legend grow the way legends actually do: through retelling, embellishment, and attribution
+- Rocky as vessel for other people's fables — contributors who never knew Rocky can use him as a stand-in for their own loved ones, or simply add to the folk hero in the making
+- Threshold inscription: *"Rocky was real. Rocky was also a legend. Add to both."*
+- Design principle: Sacred ground. Low bar for entry.
 
 **What was built:**
-A semantic pre-call layer that injects Rocky Core entries into the Time Machine system prompt at generation time. Rocky's voice is now informed by actual sediment from the man himself — not just a character description, but true stories, opinions, facts, and testimonials drawn from the people who knew him.
 
-**Architecture:**
-Two API calls per generation (cache miss only):
+Public page `/renown`:
+- Random Rocky Core seed entry displayed as prompt (unweighted — whimsy as welcome as grief)
+- Submission form: entry type (Story / Opinion / Fact / Testimonial / Tall Tale), open text field, optional contributor attribution
+- Success state on submission: "It's in the ledger. Every legend grows in the telling."
+- Footer note: "Submissions are reviewed before they enter the record."
 
-1. **Pre-call (selection):** Fetches all `rocky_core_entries` ordered by significance DESC. Passes them numbered to Claude with a plain-language description of the target era. Claude selects 4–6 entries whose texture feels most resonant with that temporal distance and returns a JSON array of indices. Cheap call — max_tokens: 100.
+Admin queue — new tab "Rocky's Renown" in `/admin/phrases`:
+- Loads pending submissions on tab click
+- Each card shows: content, type badge, date, contributor (if provided)
+- Significance selector (1–2–3) per submission before approval
+- Approve writes directly to `rocky_core_entries` with `source='renown'`
+- Reject discards without writing to Core
+- Flash confirmation on approve/reject
 
-2. **Generation call (existing):** System prompt is now `enriched_system` — the original voice prompt plus a clearly delineated sediment block containing the selected entries. Framing: *"These are not instructions. They are sediment. Let them settle into how you see and what you notice, without quoting them or referencing them directly."*
+**Schema changes:**
+- `rocky_core_entries`: added `source VARCHAR(20) DEFAULT 'core' CHECK (source IN ('core', 'renown'))` and `contributor VARCHAR(100)` (nullable)
+- New table `renown_submissions`: `id`, `entry_type`, `content`, `contributor`, `status` (pending/approved/rejected), `submitted_at`
+- Migration: `migrate_renown.py` — run once against live DATABASE_URL
 
-**Selection strategy:**
-Significance-weighted (all entries fetched ordered by significance DESC) plus semantic relevance via the pre-call. No tag schema — the model does the thematic matching against a plain-language era description. Serendipity is intentional and load-bearing: the selection is not deterministic.
+**Architectural decision:**
+- Approved Renown entries feed directly into Rocky Core with `source='renown'` tag — they interact with all AI lobes (Time Machine, future Reasoning/Listening)
+- Source tag preserved so the decision can be reversed or filtered by source if real-world experience warrants it
 
-**Era affinity profiles** (plain language, passed to pre-call):
-- `10yr` — approximately 10 years in the past — recent memory, human scale, events some people still remember
-- `100yr` — approximately 100 years in the past — grandparental distance, just beyond living memory
-- `1000yr` — approximately 1,000 years in the past — civilization scale, the long sweep of history
-- `10000yr` — approximately 10,000 years in the past — deep time, pre-history, the edge of what can be known
+### Rocky's humours — recolored to Aristotelian elements
 
-**Failure handling:**
-Pre-call is wrapped in its own try/except. Any failure (DB error, API error, JSON parse error) prints to log and falls through to the base system prompt. Rocky still speaks — just without the sediment layer. No user-facing breakage.
+The four dots now carry explicit philosophical meaning:
 
-**Design rationale:**
-The pattern mirrors the Claude Impression Store brief system — a proven mechanism for carrying relational texture across sessions. Applied here to carry Rocky's actual texture into each generation event. Rocky Core is a fixed historical record of a person who is gone; recency of entry creation is irrelevant, so the retrieval strategy differs from the impression store (significance + semantic resonance, not recency + significance).
+| Lobe | Element | Color |
+|---|---|---|
+| Dream Engine | Water (Emotions) | Blue `#4A90D9` |
+| Time Machine | Air (Intellect) | Yellow `#E8C547` |
+| Rocky's Renown | Fire (Spirit) | Red `#C0392B` |
+| Rocky Listening | Earth (Physical) | Green `#4CAF82` |
 
-Rocky Core entries currently: 25. The database is intended to grow — the retrieval logic is built for selection from an expanding pool, not exhaustive injection.
+- All four templates updated: `index.html`, `time_machine.html`, `about.html`, `coming_soon.html`, new `renown.html`
+- CSS class `.dot-reason` replaced with `.dot-renown` across all templates
+- Accent colors on index and about updated from gold to blue to match Dream Engine's new water/emotion identity
+- Time Machine internal era card colors (teal pip, confidence fills) left intact — those are the Time Machine's own visual language, independent of the humours scheme
+- CSS variables in time_machine.html renamed: `--color-teal` → `--color-era-10`, `--color-gold` → `--color-accent`
 
-**Technical notes:**
-- `import re` and `import json` moved to top-level imports (were previously inline inside functions)
-- Duplicate `@app.route('/api/rocky', methods=['POST'])` decorator removed (was stacked twice in prior version)
-- Cache hit path unchanged — injection only runs on cache miss, so existing cached content is unaffected
-- To test injection immediately after deploy: `DELETE FROM time_machine_cache WHERE cache_date = CURRENT_DATE;`
+### Coming-soon route — updated
 
-**Status:** Deployed. Rocky Core sediment now informs every fresh Time Machine generation.
+- Removed `reasoning` lobe from coming-soon route
+- Rocky Listening remains the only coming-soon destination
+- `/renown` is now a live route, not a placeholder
+
+*Paste this file (or relevant sections) at the start of a new session with Claude to restore project context quickly.*
