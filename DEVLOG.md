@@ -315,3 +315,18 @@ The four dots now carry explicit philosophical meaning:
 - `/renown` is now a live route, not a placeholder
 
 *Paste this file (or relevant sections) at the start of a new session with Claude to restore project context quickly.*
+
+### Rocky Core admin — Renown visibility fix
+
+After live testing, approved Renown entries were not visually surfaced in the Rocky Core tab. Two fixes:
+
+- `app.py`: added `source` column to the Rocky Core admin SELECT query
+- `admin.html`: 
+  - Added `data-source` attribute to entry cards (populated from `e.source`)
+  - Added "Tall Tales" and "Renown" filter buttons to the filter row
+  - Renown filter button styled in fire red `#C0392B` to match the lobe color
+  - Approved Renown entries display a small red "renown" source tag alongside their type badge
+  - Filter JS updated: "Renown" filter matches on `data-source='renown'` rather than entry type; all other filters match on `data-type` as before
+  - Badge class updated to handle space in "tall tale" via Jinja `replace(' ', '-')`
+
+Approved Renown entries are now clearly identifiable in Rocky Core and filterable by source.
