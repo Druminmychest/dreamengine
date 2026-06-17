@@ -20,11 +20,11 @@
       --color-text-primary: #f0ece4;
       --color-text-secondary: #a09890;
       --color-text-tertiary: #5a5550;
-      --color-teal: #5DCAA5;
+      --color-era-10: #5DCAA5;
       --color-blue: #85B7EB;
       --color-purple: #AFA9EC;
       --color-amber: #EF9F27;
-      --color-gold: #C9A84C;
+      --color-accent: #4A90D9;
       --radius-md: 8px;
       --radius-lg: 12px;
     }
@@ -66,7 +66,7 @@
       border-bottom: 0.5px solid var(--color-border);
     }
     .era-pip { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-    .pip-10   { background: var(--color-teal); }
+    .pip-10   { background: var(--color-era-10); }
     .pip-100  { background: var(--color-blue); }
     .pip-1000 { background: var(--color-purple); }
     .pip-10k  { background: var(--color-amber); }
@@ -106,7 +106,7 @@
       border-radius: 2px; overflow: hidden;
     }
     .conf-fill { height: 100%; border-radius: 2px; }
-    .fill-10   { background: var(--color-teal);   width: 92%; }
+    .fill-10   { background: var(--color-era-10);   width: 92%; }
     .fill-100  { background: var(--color-blue);   width: 65%; }
     .fill-1000 { background: var(--color-purple); width: 35%; }
     .fill-10k  { background: var(--color-amber);  width: 15%; }
@@ -127,7 +127,7 @@
       font-family: var(--font-serif); font-style: italic;
     }
     .footer a {
-      color: var(--color-gold); text-decoration: none;
+      color: var(--color-accent); text-decoration: none;
       border-bottom: 1px solid #444; font-style: normal;
       font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.05em;
     }
@@ -165,10 +165,10 @@
       display: block; width: 20px; height: 20px; border-radius: 50%;
       transition: opacity 0.2s, transform 0.2s;
     }
-    .dot-dream  { background: #C9A84C; }
-    .dot-time   { background: #5DCAA5; }
-    .dot-reason { background: #85B7EB; }
-    .dot-listen { background: #AFA9EC; }
+    .dot-dream  { background: #4A90D9; }
+    .dot-time   { background: #E8C547; }
+    .dot-renown { background: #C0392B; }
+    .dot-listen { background: #4CAF82; }
     .nav-dot.active .dot { opacity: 1; }
     .nav-dot:not(.active) .dot { opacity: 0.3; }
     .nav-dot.dim .dot { opacity: 0.15; }
@@ -199,8 +199,8 @@
     <a href="/time-machine" class="nav-dot active" data-label="Time Machine">
       <span class="dot dot-time"></span>
     </a>
-    <a href="/coming-soon/reasoning" class="nav-dot dim" data-label="Rocky Reasoning">
-      <span class="dot dot-reason"></span>
+    <a href="/renown" class="nav-dot" data-label="Rocky's Renown">
+      <span class="dot dot-renown"></span>
     </a>
     <a href="/coming-soon/listening" class="nav-dot dim" data-label="Rocky Listening">
       <span class="dot dot-listen"></span>

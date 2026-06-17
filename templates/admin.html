@@ -345,7 +345,32 @@
             border: 1px solid;
         }
 
-        .badge-story       { color: #5DCAA5; border-color: #5DCAA522; }
+        .badge-tall-tale   { color: #C0392B; border-color: #C0392B22; }
+
+        /* ── Renown queue cards ── */
+        .renown-card {
+            border: 1px solid #1a1a1a;
+            border-radius: 4px;
+            padding: 1rem 1.2rem;
+            margin-bottom: 0.75rem;
+            background: #0c0c0c;
+        }
+        .renown-card-text {
+            font-size: 0.95rem; line-height: 1.65; color: #ccc; margin-bottom: 0.5rem;
+        }
+        .renown-card-meta {
+            font-family: Calibri, sans-serif; font-size: 0.75rem;
+            color: #3a3a3a; display: flex; gap: 1rem; align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .renown-card-actions {
+            display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;
+        }
+        .renown-sig-group { display: flex; gap: 0.3rem; align-items: center; }
+        .renown-sig-label {
+            font-family: Calibri, sans-serif; font-size: 0.75rem; color: #444;
+            letter-spacing: 0.06em; margin-right: 0.2rem;
+        }
         .badge-opinion     { color: #85B7EB; border-color: #85B7EB22; }
         .badge-fact        { color: #C9A84C; border-color: #C9A84C22; }
         .badge-testimonial { color: #AFA9EC; border-color: #AFA9EC22; }
@@ -557,6 +582,7 @@
     <div class="tabs">
         <div class="tab active" data-tab="queue">Phrase Queue</div>
         <div class="tab" data-tab="rocky-core">Rocky Core</div>
+        <div class="tab" data-tab="renown">Rocky's Renown</div>
         <div class="tab" data-tab="open-session">Open Session</div>
         <div class="tab" data-tab="impressions">Close Session</div>
     </div>
@@ -699,6 +725,20 @@
 
 
     <!-- ═══════════════════════════════════════
+         PANEL 2b — ROCKY'S RENOWN QUEUE
+    ════════════════════════════════════════ -->
+    <div class="panel" id="panel-renown">
+
+        <div class="success-flash" id="renown-flash"></div>
+
+        <div id="renown-queue-list">
+            <div class="empty-state" id="renown-empty" style="display:none;">No pending submissions.</div>
+        </div>
+
+    </div><!-- /panel-renown -->
+
+
+    <!-- ═══════════════════════════════════════
          PANEL 3 — OPEN SESSION
     ════════════════════════════════════════ -->
     <div class="panel" id="panel-open-session">
@@ -783,8 +823,118 @@
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+            if (tab.dataset.tab === 'renown') loadRenownQueue();
         });
     });
+
+    // ── Renown queue ──
+    async function loadRenownQueue() {
+        const list  = document.getElementById('renown-queue-list');
+        const empty = document.getElementById('renown-empty');
+        try {
+            const res  = await fetch('/admin/renown/queue');
+            const data = await res.json();
+            const subs = data.submissions || [];
+
+            // Clear existing cards (keep empty state node)
+            list.querySelectorAll('.renown-card').forEach(c => c.remove());
+
+            if (subs.length === 0) {
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+
+            subs.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'renown-card';
+                card.id = 'renown-card-' + s.id;
+                card.innerHTML = `
+                    <div class="renown-card-text">${escapeHtml(s.content)}</div>
+                    <div class="renown-card-meta">
+                        <span class="entry-type-badge badge-${s.entry_type.replace(' ','-')}">${s.entry_type}</span>
+                        <span>${s.submitted_at}</span>
+                        ${s.contributor ? '<span>— ' + escapeHtml(s.contributor) + '</span>' : ''}
+                    </div>
+                    <div class="renown-card-actions">
+                        <span class="renown-sig-label">Significance</span>
+                        <div class="renown-sig-group">
+                            <button class="sig-btn rsig-btn" data-id="${s.id}" data-sig="1">1</button>
+                            <button class="sig-btn rsig-btn" data-id="${s.id}" data-sig="2">2</button>
+                            <button class="sig-btn rsig-btn" data-id="${s.id}" data-sig="3">3</button>
+                        </div>
+                        <button class="btn btn-gold" onclick="approveRenown(${s.id})">Approve</button>
+                        <button class="btn btn-danger" onclick="rejectRenown(${s.id})">Reject</button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            // Default sig selection per card
+            list.querySelectorAll('.rsig-btn[data-sig="1"]').forEach(b => b.classList.add('selected'));
+            list.querySelectorAll('.rsig-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    list.querySelectorAll(`.rsig-btn[data-id="${id}"]`).forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                });
+            });
+
+        } catch (err) {
+            console.error('Renown queue load error:', err);
+        }
+    }
+
+    async function approveRenown(id) {
+        const sigBtn = document.querySelector(`.rsig-btn[data-id="${id}"].selected`);
+        const significance = sigBtn ? parseInt(sigBtn.dataset.sig) : 1;
+        try {
+            const res  = await fetch('/admin/renown/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, significance })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('renown-card-' + id)?.remove();
+                flash('renown-flash', 'Approved — added to Rocky Core.');
+                if (!document.querySelector('.renown-card')) {
+                    document.getElementById('renown-empty').style.display = 'block';
+                }
+            }
+        } catch (err) { console.error('Approve error:', err); }
+    }
+
+    async function rejectRenown(id) {
+        try {
+            const res  = await fetch('/admin/renown/reject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('renown-card-' + id)?.remove();
+                flash('renown-flash', 'Rejected.');
+                if (!document.querySelector('.renown-card')) {
+                    document.getElementById('renown-empty').style.display = 'block';
+                }
+            }
+        } catch (err) { console.error('Reject error:', err); }
+    }
+
+    function flash(elId, msg) {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        el.textContent = msg;
+        setTimeout(() => { el.textContent = ''; }, 3000);
+    }
+
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
 
     // ── Rocky Core: significance selector ──
     let selectedSig = 1;

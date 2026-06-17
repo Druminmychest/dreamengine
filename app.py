@@ -580,20 +580,14 @@ No explanation. No preamble. Only the array."""
 @app.route('/coming-soon/<lobe>')
 def coming_soon(lobe):
     lobes = {
-        'reasoning': {
-            'name': "Rocky Reasoning",
-            'description': "Rocky thinking through a problem with you. His particular brand of straight-talking, no-nonsense wisdom applied to the present.",
-            'dot_class': 'dot-reason',
-            'dot_color': '#85B7EB',
-        },
         'listening': {
             'name': "Rocky Listening",
             'description': "Rocky as confessor, sounding board, old friend in the chair across from you.",
             'dot_class': 'dot-listen',
-            'dot_color': '#AFA9EC',
+            'dot_color': '#4CAF82',
         },
     }
-    lobe_data = lobes.get(lobe, lobes['reasoning'])
+    lobe_data = lobes.get(lobe, lobes['listening'])
     return render_template('coming_soon.html', lobe=lobe_data)
 
 # ── Claude Impression Store ──────────────────────────────────────────────────
@@ -862,6 +856,138 @@ def project_stats():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ── Rocky's Renown ───────────────────────────────────────────────────────────
+
+@app.route('/renown')
+def renown():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, entry_type, content, significance
+        FROM rocky_core_entries
+        ORDER BY RANDOM()
+        LIMIT 1
+    """)
+    seed = cur.fetchone()
+    conn.close()
+    return render_template('renown.html', seed=seed)
+
+
+@app.route('/renown/submit', methods=['POST'])
+def renown_submit():
+    data        = request.json or {}
+    entry_type  = (data.get('entry_type') or '').strip().lower()
+    content     = (data.get('content') or '').strip()
+    contributor = (data.get('contributor') or '').strip() or None
+
+    valid_types = ('story', 'opinion', 'fact', 'testimonial', 'tall tale')
+    if entry_type not in valid_types:
+        return jsonify({'success': False, 'error': 'Invalid entry type.'}), 400
+    if not content:
+        return jsonify({'success': False, 'error': 'Content is required.'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO renown_submissions (entry_type, content, contributor)
+        VALUES (%s, %s, %s)
+        RETURNING id
+    """, (entry_type, content, contributor))
+    new_id = cur.fetchone()['id']
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'id': new_id})
+
+
+@app.route('/admin/renown/queue')
+@require_auth
+def renown_queue():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, entry_type, content, contributor, submitted_at
+        FROM renown_submissions
+        WHERE status = 'pending'
+        ORDER BY submitted_at ASC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    submissions = [{
+        'id':           r['id'],
+        'entry_type':   r['entry_type'],
+        'content':      r['content'],
+        'contributor':  r['contributor'],
+        'submitted_at': r['submitted_at'].strftime('%b %d, %Y')
+    } for r in rows]
+
+    return jsonify({'submissions': submissions})
+
+
+@app.route('/admin/renown/approve', methods=['POST'])
+@require_auth
+def renown_approve():
+    data          = request.json or {}
+    submission_id = data.get('id')
+    significance  = int(data.get('significance', 1))
+
+    if not submission_id:
+        return jsonify({'success': False, 'error': 'id is required.'}), 400
+    if significance not in (1, 2, 3):
+        significance = 1
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT entry_type, content, contributor
+        FROM renown_submissions
+        WHERE id = %s AND status = 'pending'
+    """, (submission_id,))
+    row = cur.fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Submission not found or already actioned.'}), 404
+
+    cur.execute("""
+        INSERT INTO rocky_core_entries (entry_type, content, significance, source, contributor)
+        VALUES (%s, %s, %s, 'renown', %s)
+        RETURNING id
+    """, (row['entry_type'], row['content'], significance, row['contributor']))
+    new_core_id = cur.fetchone()['id']
+
+    cur.execute("""
+        UPDATE renown_submissions SET status = 'approved' WHERE id = %s
+    """, (submission_id,))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'core_id': new_core_id})
+
+
+@app.route('/admin/renown/reject', methods=['POST'])
+@require_auth
+def renown_reject():
+    data          = request.json or {}
+    submission_id = data.get('id')
+
+    if not submission_id:
+        return jsonify({'success': False, 'error': 'id is required.'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE renown_submissions SET status = 'rejected' WHERE id = %s AND status = 'pending'
+    """, (submission_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True})
+
 
 if __name__ == '__main__':
     app.run(debug=True)

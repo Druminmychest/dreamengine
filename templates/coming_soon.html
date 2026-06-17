@@ -20,7 +20,7 @@
       --color-text-primary: #f0ece4;
       --color-text-secondary: #a09890;
       --color-text-tertiary: #5a5550;
-      --color-gold: #C9A84C;
+      --color-gold: #4A90D9;
     }
 
     html { background: var(--color-bg); color: var(--color-text-primary); font-family: var(--font-sans); }
@@ -119,10 +119,10 @@
       display: block; width: 20px; height: 20px; border-radius: 50%;
       transition: opacity 0.2s, transform 0.2s;
     }
-    .dot-dream  { background: #C9A84C; }
-    .dot-time   { background: #5DCAA5; }
-    .dot-reason { background: #85B7EB; }
-    .dot-listen { background: #AFA9EC; }
+    .dot-dream  { background: #4A90D9; }
+    .dot-time   { background: #E8C547; }
+    .dot-renown { background: #C0392B; }
+    .dot-listen { background: #4CAF82; }
     .nav-dot.active .dot { opacity: 1; }
     .nav-dot:not(.active) .dot { opacity: 0.3; }
     .nav-dot.dim .dot { opacity: 0.15; }
@@ -156,8 +156,8 @@
     <a href="/time-machine" class="nav-dot" data-label="Time Machine">
       <span class="dot dot-time"></span>
     </a>
-    <a href="/coming-soon/reasoning" class="nav-dot {% if lobe.name == 'Rocky Reasoning' %}active{% else %}dim{% endif %}" data-label="Rocky Reasoning">
-      <span class="dot dot-reason"></span>
+    <a href="/renown" class="nav-dot" data-label="Rocky's Renown">
+      <span class="dot dot-renown"></span>
     </a>
     <a href="/coming-soon/listening" class="nav-dot {% if lobe.name == 'Rocky Listening' %}active{% else %}dim{% endif %}" data-label="Rocky Listening">
       <span class="dot dot-listen"></span>

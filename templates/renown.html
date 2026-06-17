@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rocky's Renown</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-serif: 'EB Garamond', Georgia, serif;
+      --color-bg: #0e0e0e;
+      --color-surface: #161616;
+      --color-border: rgba(255,255,255,0.08);
+      --color-border-mid: rgba(255,255,255,0.14);
+      --color-text-primary: #f0ece4;
+      --color-text-secondary: #a09890;
+      --color-text-tertiary: #5a5550;
+      --color-renown: #C0392B;
+      --color-renown-dim: rgba(192,57,43,0.15);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    html { background: var(--color-bg); color: var(--color-text-primary); font-family: var(--font-sans); }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6rem 1.25rem 4rem;
+    }
+
+    .app { width: 100%; max-width: 640px; }
+
+    /* ── Rocky Nav ── */
+    .rocky-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1.25rem 0.6rem;
+      background: rgba(14,14,14,0.94);
+      backdrop-filter: blur(8px);
+      border-bottom: 0.5px solid rgba(255,255,255,0.07);
+    }
+    .nav-label {
+      font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: #6a6560; font-family: var(--font-sans); font-weight: 400; line-height: 1;
+    }
+    .nav-dots { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-dot {
+      display: flex; flex-direction: column; align-items: center;
+      text-decoration: none; position: relative; cursor: pointer;
+    }
+    .dot {
+      display: block; width: 20px; height: 20px; border-radius: 50%;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .dot-dream  { background: #4A90D9; }
+    .dot-time   { background: #E8C547; }
+    .dot-renown { background: #C0392B; }
+    .dot-listen { background: #4CAF82; }
+    .nav-dot.active .dot { opacity: 1; }
+    .nav-dot:not(.active) .dot { opacity: 0.3; }
+    .nav-dot.dim .dot { opacity: 0.15; }
+    .nav-dot:hover .dot { opacity: 0.85; transform: scale(1.2); }
+    .nav-dot.active:hover .dot { opacity: 1; transform: scale(1.05); }
+    .nav-dot::after {
+      content: attr(data-label);
+      position: absolute; top: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a1a; color: #a09890;
+      font-size: 11px; letter-spacing: 0.06em; white-space: nowrap;
+      padding: 4px 10px; border-radius: 4px;
+      border: 0.5px solid rgba(255,255,255,0.1);
+      opacity: 0; pointer-events: none; transition: opacity 0.15s;
+      font-family: var(--font-sans); z-index: 200;
+    }
+    .nav-dot:hover::after { opacity: 1; }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 3rem; }
+    .rocky-eyebrow {
+      font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--color-text-tertiary); font-weight: 400; margin-bottom: 0.4rem;
+    }
+    .app-title {
+      font-family: var(--font-serif); font-size: 32px; font-weight: 400;
+      color: var(--color-text-primary); letter-spacing: 0.01em; margin-bottom: 1rem;
+    }
+    .threshold {
+      font-family: var(--font-serif); font-size: 17px; font-style: italic;
+      color: var(--color-renown); letter-spacing: 0.02em; line-height: 1.5;
+    }
+
+    /* ── Seed card ── */
+    .seed-label {
+      font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--color-text-tertiary); margin-bottom: 0.75rem;
+    }
+    .seed-card {
+      background: var(--color-renown-dim);
+      border: 0.5px solid rgba(192,57,43,0.3);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .seed-type {
+      font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--color-renown); margin-bottom: 0.6rem; font-weight: 500;
+    }
+    .seed-content {
+      font-family: var(--font-serif); font-size: 18px; line-height: 1.65;
+      color: var(--color-text-primary);
+    }
+
+    /* ── Form ── */
+    .form-section { margin-bottom: 2.5rem; }
+    .form-label {
+      display: block;
+      font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--color-text-tertiary); margin-bottom: 0.5rem;
+    }
+    select, textarea, input[type="text"] {
+      width: 100%;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border-mid);
+      border-radius: var(--radius-md);
+      color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      padding: 0.75rem 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select:focus, textarea:focus, input[type="text"]:focus {
+      border-color: var(--color-renown);
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a5550' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+      cursor: pointer;
+    }
+    select option { background: #1a1a1a; }
+    textarea {
+      resize: vertical;
+      min-height: 140px;
+      line-height: 1.6;
+      font-family: var(--font-serif);
+      font-size: 17px;
+    }
+    .field-gap { margin-bottom: 1.25rem; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.85rem 1.5rem;
+      background: var(--color-renown);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .submit-btn:hover { opacity: 0.85; }
+    .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── States ── */
+    .success-state {
+      display: none;
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+    .success-state.visible { display: block; }
+    .success-title {
+      font-family: var(--font-serif); font-size: 26px; font-style: italic;
+      color: var(--color-text-primary); margin-bottom: 0.75rem;
+    }
+    .success-sub {
+      font-size: 14px; color: var(--color-text-secondary); line-height: 1.6;
+    }
+    .success-back {
+      display: inline-block; margin-top: 1.5rem;
+      font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--color-renown); text-decoration: none;
+      border-bottom: 0.5px solid rgba(192,57,43,0.4);
+      padding-bottom: 1px;
+    }
+
+    .error-msg {
+      font-size: 13px; color: #e07070;
+      margin-top: 0.5rem; display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    .footer-note {
+      text-align: center;
+      font-size: 12px; color: var(--color-text-tertiary);
+      margin-top: 3rem; line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="rocky-nav" aria-label="Rocky's aspects">
+  <div class="nav-label">Rocky's humours</div>
+  <div class="nav-dots">
+    <a href="/" class="nav-dot" data-label="Dream Engine">
+      <span class="dot dot-dream"></span>
+    </a>
+    <a href="/time-machine" class="nav-dot" data-label="Time Machine">
+      <span class="dot dot-time"></span>
+    </a>
+    <a href="/renown" class="nav-dot active" data-label="Rocky's Renown">
+      <span class="dot dot-renown"></span>
+    </a>
+    <a href="/coming-soon/listening" class="nav-dot dim" data-label="Rocky Listening">
+      <span class="dot dot-listen"></span>
+    </a>
+  </div>
+</nav>
+
+<div class="app">
+
+  <div class="header">
+    <div class="rocky-eyebrow">Rocky's</div>
+    <div class="app-title">Renown</div>
+    <div class="threshold">Rocky was real. Rocky was also a legend. Add to both.</div>
+  </div>
+
+  <!-- Submission form -->
+  <div id="form-view">
+
+    {% if seed %}
+    <div class="seed-label">From the ledger</div>
+    <div class="seed-card">
+      <div class="seed-type">{{ seed.entry_type }}</div>
+      <div class="seed-content">{{ seed.content }}</div>
+    </div>
+    {% endif %}
+
+    <div class="form-section">
+      <div class="field-gap">
+        <label class="form-label" for="entry-type">What are you adding</label>
+        <select id="entry-type">
+          <option value="" disabled selected>Choose a type</option>
+          <option value="story">Story</option>
+          <option value="opinion">Opinion</option>
+          <option value="fact">Fact</option>
+          <option value="testimonial">Testimonial</option>
+          <option value="tall tale">Tall Tale</option>
+        </select>
+      </div>
+
+      <div class="field-gap">
+        <label class="form-label" for="entry-content">Your entry</label>
+        <textarea id="entry-content" placeholder="Say what you know. Or what you suspect. Or what ought to have been true."></textarea>
+        <div class="error-msg" id="content-error">Please write something before submitting.</div>
+      </div>
+
+      <div class="field-gap">
+        <label class="form-label" for="contributor">Your name or handle <span style="color:#5a5550; font-size:9px; letter-spacing:0.1em;">(optional)</span></label>
+        <input type="text" id="contributor" placeholder="Leave blank to contribute anonymously" />
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitEntry()">Add to the ledger</button>
+      <div class="error-msg" id="submit-error"></div>
+    </div>
+
+  </div>
+
+  <!-- Success state -->
+  <div class="success-state" id="success-view">
+    <div class="success-title">It's in the ledger.</div>
+    <div class="success-sub">Every legend grows in the telling.<br>Yours will be considered.</div>
+    <a href="/renown" class="success-back">Add another</a>
+  </div>
+
+  <div class="footer-note">
+    Submissions are reviewed before they enter the record.<br>
+    Sacred ground. Low bar for entry.
+  </div>
+
+</div>
+
+<script>
+  async function submitEntry() {
+    const type        = document.getElementById('entry-type').value;
+    const content     = document.getElementById('entry-content').value.trim();
+    const contributor = document.getElementById('contributor').value.trim();
+    const btn         = document.getElementById('submit-btn');
+    const contentErr  = document.getElementById('content-error');
+    const submitErr   = document.getElementById('submit-error');
+
+    // Reset errors
+    contentErr.classList.remove('visible');
+    submitErr.classList.remove('visible');
+
+    if (!content) {
+      contentErr.classList.add('visible');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+      const res = await fetch('/renown/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entry_type:  type || 'story',
+          content:     content,
+          contributor: contributor || null
+        })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        document.getElementById('form-view').style.display = 'none';
+        document.getElementById('success-view').classList.add('visible');
+      } else {
+        submitErr.textContent = data.error || 'Something went wrong. Please try again.';
+        submitErr.classList.add('visible');
+        btn.disabled = false;
+        btn.textContent = 'Add to the ledger';
+      }
+    } catch (err) {
+      submitErr.textContent = 'Could not reach the server. Please try again.';
+      submitErr.classList.add('visible');
+      btn.disabled = false;
+      btn.textContent = 'Add to the ledger';
+    }
+  }
+</script>
+
+</body>
+</html>
