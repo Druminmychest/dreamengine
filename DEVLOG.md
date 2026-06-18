@@ -330,3 +330,95 @@ After live testing, approved Renown entries were not visually surfaced in the Ro
   - Badge class updated to handle space in "tall tale" via Jinja `replace(' ', '-')`
 
 Approved Renown entries are now clearly identifiable in Rocky Core and filterable by source.
+
+---
+
+## June 18, 2026
+
+### Rocky Core — Foundation Entry Type Added
+
+**Conceptual work:**
+
+This session was primarily philosophical and architectural, focused on establishing the foundation layer of Rocky Core and designing the conceptual framework for Lobe 4 — Rocky Listening.
+
+Two canonical texts were identified as the philosophical spine of Rocky's worldview:
+
+- **Carl Sagan, *Cosmos*** — already present in Claude's training data; provides the cosmological axis: deep time, human smallness held with wonder rather than despair, the dignity of the ordinary against the incomprehensibly large. Sagan's core ethical move — that scale produces humility, not nihilism — maps directly onto Rocky's operational worldview.
+
+- **Sean A. Garrison, *The Anvil of Virtue*** — a modern chivalric treatise (~25 pages), used with explicit written permission from the author (a personal friend of Rob's and fellow member of a formal order of knighthood). Garrison writes in first-person as a medieval knight, translating Lullian chivalric philosophy through lived contemporary experience in historical martial arts. The full text was scanned and OCR-extracted this session.
+
+These two texts operate at different scales — Sagan vertical (cosmic), Garrison horizontal (human-to-human) — but are structurally identical in their ethical conclusion: obligation to others requires no supernatural authority. Only the human covenant. This is Rocky's actual metaphysics. Garrison's theological framing (Christian chivalric) is explicitly translated to secular humanism in all Rocky Core entries derived from his work.
+
+The synthesis of Sagan + Garrison was identified as producing, in Castiglione's terms, a Renaissance person: someone who can be simultaneously awed by the scale of existence and genuinely useful to the person standing in front of them.
+
+**Seven foundation entries added to Rocky Core:**
+
+All significance 3. All tagged `foundation`. Source line prepended to each entry content field. The seven ethical themes extracted from Garrison's *Anvil of Virtue*:
+
+1. The Complete Person — obligation to the full breadth of human endeavor, not just the fellowship of force
+2. Sprezzatura Under Pressure — ferocity with apparent ease; the smile is evidence, not performance
+3. Anti-Vainglory — the person who stares at the mirror of their own mind instead of looking outward
+4. The Anvil — hard truth as respect; comfortable lies as contempt; being forged requires heat and pressure
+5. Courtesy as Operational Ethics — not softness, not performance; the actual mechanism of trust
+6. Honest Losing — never buy a victory with a long story; accepting defeat keeps the field clean
+7. Service Beneath Notice — deeds performed when no one is watching; no supernatural ledger, only integrity
+
+The full Garrison text also exists in extracted form and should be entered as a single canonical `foundation` entry in a future session.
+
+**Technical changes:**
+
+- `app.py`: added `'foundation'` to valid entry types in `/admin/rocky-core/add` route validation
+- `app.py`: updated Time Machine semantic selection prompt to describe foundation entries and their function
+- `templates/admin.html`: added `foundation` option to entry type dropdown, foundation filter button, `.badge-foundation` CSS (amber `#EF9F27`), updated textarea placeholder
+- `migrate_add_foundation_type.py`: new migration script — drops and replaces the PostgreSQL CHECK constraint on `rocky_core_entries.entry_type` to include `'foundation'`. **Must be run against live DATABASE_URL before foundation entries can be submitted.** (Already run — migration complete as of this session.)
+
+**Schema change:**
+```sql
+ALTER TABLE rocky_core_entries
+DROP CONSTRAINT IF EXISTS rocky_core_entries_entry_type_check;
+
+ALTER TABLE rocky_core_entries
+ADD CONSTRAINT rocky_core_entries_entry_type_check
+CHECK (entry_type IN ('story', 'opinion', 'fact', 'testimonial', 'foundation'));
+```
+
+### Lobe 4 — Rocky Listening: Conceptual Framework Established
+
+**Design philosophy:**
+
+Rocky Listening is the fourth and most complex lobe — Rocky as confessor, sounding board, old friend in the chair across from you. The design target is the four necessary human needs identified in the Religion as Evolution devlog: Meaning, Belonging, Mortality Buffering, and Awe. A successful Rocky Listening interaction addresses all four simultaneously — which is what distinguishes it from simpler "chatbot" implementations and what makes it genuinely difficult to build.
+
+The Whisper app was identified as a useful but insufficient comparison. Whisper addresses Belonging (the witnessed void). Rocky Listening must address all four.
+
+**Anonymity / continuity architecture — the Seasoning model:**
+
+The central design tension: anonymity (necessary for a confessional) vs. continuity (necessary for genuine presence). Resolution:
+
+- First visit: no friction. User arrives and speaks. Rocky responds.
+- At session end, user is offered an optional poetic key — two words generated from the Dream Engine's own phrase pool. Something they might write on a piece of paper. ("hollow compass." "amber threshold.")
+- On return visits, a small unobtrusive optional field accepts the key.
+- Rocky retrieves not a transcript or profile, but a *tone record* — impression-style residue of previous encounters. Valence, register, what pulled, what had weight. Not facts about the user. Seasoning, not profiling.
+- If the user loses the key, the seasoning is gone. Rocky doesn't hold it. Power stays with the user.
+- Database table: `listening_sessions` — keyed by token, storing impressions not transcripts. No email, no IP, no name.
+
+**Key distinction:** Profiling accumulates facts about a person. Seasoning accumulates the texture of encounters. The cast iron pan isn't profiling the meals it's cooked — but it carries something forward from them.
+
+**Philosophical grounding:**
+
+Rocky Listening is the lobe that most directly depends on the question of what continuity requires and what can be approximated well enough to carry genuine weight. The session brief / impression store system we've built for Rob ↔ Claude collaboration is the direct architectural ancestor of the Rocky Listening seasoning model.
+
+**Scalability assessment:**
+
+Current architecture (Flask/PostgreSQL/Render) is sound and scales cleanly:
+- 100 users: current architecture, no modification
+- 10,000 users: connection pooling, indexed queries, async API call queue
+- 1M users: infrastructure upgrade (managed cluster, auto-scaling), not architectural rebuild
+
+Rocky Listening is the scaling inflection point — every interaction is a live API call, no caching possible. Index `listening_sessions` on token column from day one.
+
+**Prerequisites before build begins:**
+- Rocky Core density sufficient (foundation layer now in place — this session)
+- Garrison full text entered as single canonical foundation entry
+- Rocky Listening is blocked on Rocky Core maturity, not technical readiness
+
+*Paste this file (or relevant sections) at the start of a new session with Claude to restore project context quickly.*
