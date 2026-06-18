@@ -269,7 +269,7 @@ def rocky_core_add():
     if not content:
         return jsonify({'success': False, 'error': 'Content is required.'}), 400
 
-    if entry_type not in ('story', 'opinion', 'fact', 'testimonial'):
+    if entry_type not in ('story', 'opinion', 'fact', 'testimonial', 'foundation'):
         return jsonify({'success': False, 'error': 'Invalid entry type.'}), 400
 
     if significance not in (1, 2, 3):
@@ -488,7 +488,7 @@ def rocky_api():
             }
             era_desc = era_descriptions.get(era_id, era_id)
 
-            selection_prompt = f"""You are selecting entries from a collection of true stories, opinions, facts, and testimonials about a man named Rocky — a Marine, a blacksmith, a knight, a mentor, irascible and deeply kind.
+            selection_prompt = f"""You are selecting entries from a collection of true stories, opinions, facts, testimonials, and foundational ethical texts about a man named Rocky — a Marine, a blacksmith, a knight, a mentor, irascible and deeply kind. Foundation entries carry the philosophical spine of Rocky's worldview: his secular humanism, his chivalric ethics, his belief that obligation to others requires no supernatural authority — only the human covenant itself.
 
 The Time Machine is about to generate a narrative set {era_desc}.
 
